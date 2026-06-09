@@ -1,9 +1,14 @@
+import { CATEGORY_ID_BY_NAME } from "../constants/categories.js";
 import { isLocalDataMode } from "./dataMode";
 import * as localData from "./localData";
 import { mapIdeaFromDb } from "./mappers";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
 
 const IDEA_COLUMNS = "id, author_id, category, category_id, title, description";
+const IDEA_COLUMNS_BASIC = "id, author_id, category, title, description";
+
+/** @type {Map<string, number> | null} */
+let categoryMapCache = null;
 
 function ensureSupabaseConfigured() {
   if (!isSupabaseConfigured()) {
@@ -21,44 +26,69 @@ function toDbErrorMessage(error) {
   return message;
 }
 
-/** categories 테이블에서 분야 이름 → id (없으면 null) */
-async function resolveCategoryId(categoryName) {
-  const { data, error } = await getSupabase().from("categories").select("*");
+function addCategoryMapping(map, name, id) {
+  if (name && id != null && !map.has(name)) {
+    map.set(name, id);
+  }
+}
 
-  if (error) {
-    if (
-      error.code === "42P01" ||
-      error.message?.includes("does not exist") ||
-      error.message?.includes("Could not find")
-    ) {
-      return null;
+async function loadCategoryMap() {
+  if (categoryMapCache) return categoryMapCache;
+
+  const map = new Map();
+
+  const { data: categories, error: categoriesError } = await getSupabase()
+    .from("categories")
+    .select("*");
+
+  if (!categoriesError) {
+    for (const row of categories ?? []) {
+      const name = row.name ?? row.label ?? row.title ?? row.category;
+      addCategoryMapping(map, name, row.id);
     }
-    throw new Error(toDbErrorMessage(error));
   }
 
-  const row = (data ?? []).find((item) =>
-    [item.name, item.label, item.title, item.category]
-      .filter(Boolean)
-      .some((value) => value === categoryName),
-  );
+  if (map.size === 0) {
+    const { data: ideas } = await getSupabase()
+      .from("ideas")
+      .select("category, category_id");
 
-  return row?.id ?? null;
+    for (const row of ideas ?? []) {
+      addCategoryMapping(map, row.category, row.category_id);
+    }
+  }
+
+  if (map.size === 0) {
+    for (const [name, id] of Object.entries(CATEGORY_ID_BY_NAME)) {
+      addCategoryMapping(map, name, id);
+    }
+  }
+
+  categoryMapCache = map;
+  return map;
+}
+
+async function resolveCategoryId(categoryName) {
+  const map = await loadCategoryMap();
+  return map.get(categoryName) ?? null;
 }
 
 async function buildIdeaWritePayload(authorId, { category, title, description }) {
-  const payload = {
+  const categoryId = await resolveCategoryId(category);
+
+  if (categoryId == null) {
+    throw new Error(
+      `분야 "${category}"의 category_id를 찾지 못했습니다. Supabase categories 테이블을 확인해주세요.`,
+    );
+  }
+
+  return {
     author_id: authorId,
     category,
+    category_id: categoryId,
     title,
     description,
   };
-
-  const categoryId = await resolveCategoryId(category);
-  if (categoryId != null) {
-    payload.category_id = categoryId;
-  }
-
-  return payload;
 }
 
 async function fetchSupabaseIdeasByAuthor(authorId) {
@@ -70,10 +100,10 @@ async function fetchSupabaseIdeasByAuthor(authorId) {
     .eq("author_id", authorId)
     .order("id", { ascending: false });
 
-  if (error?.message?.includes("category_id")) {
+  if (error) {
     ({ data, error } = await getSupabase()
       .from("ideas")
-      .select("id, author_id, category, title, description")
+      .select(IDEA_COLUMNS_BASIC)
       .eq("author_id", authorId)
       .order("id", { ascending: false }));
   }
@@ -91,16 +121,18 @@ async function createSupabaseIdea(authorId, { category, title, description }) {
     description,
   });
 
-  const { data, error } = await getSupabase()
+  let { data, error } = await getSupabase()
     .from("ideas")
     .insert(insertPayload)
     .select(IDEA_COLUMNS)
     .single();
 
-  if (error?.message?.includes("category_id") && insertPayload.category_id == null) {
-    throw new Error(
-      `분야 "${category}"의 category_id를 찾지 못했습니다. Supabase categories 테이블에 해당 분야가 있는지 확인해주세요.`,
-    );
+  if (error) {
+    ({ data, error } = await getSupabase()
+      .from("ideas")
+      .insert(insertPayload)
+      .select(IDEA_COLUMNS_BASIC)
+      .single());
   }
 
   if (error) throw new Error(toDbErrorMessage(error));
@@ -120,13 +152,23 @@ async function updateSupabaseIdea(
   });
   delete updatePayload.author_id;
 
-  const { data, error } = await getSupabase()
+  let { data, error } = await getSupabase()
     .from("ideas")
     .update(updatePayload)
     .eq("id", ideaId)
     .eq("author_id", authorId)
     .select(IDEA_COLUMNS)
     .single();
+
+  if (error) {
+    ({ data, error } = await getSupabase()
+      .from("ideas")
+      .update(updatePayload)
+      .eq("id", ideaId)
+      .eq("author_id", authorId)
+      .select(IDEA_COLUMNS_BASIC)
+      .single());
+  }
 
   if (error) throw new Error(toDbErrorMessage(error));
   return mapIdeaFromDb(data);
