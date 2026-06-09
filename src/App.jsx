@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import Header from "./components/Header";
 import IdeaForm from "./components/IdeaForm";
 import SortBar from "./components/SortBar";
 import CardGrid from "./components/CardGrid";
+import Pagination from "./components/Pagination";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { INITIAL_IDEAS } from "./data/initialIdeas";
 import { INITIAL_CATEGORIES } from "./constants/categories";
+import { PAGE_SIZE } from "./constants/pagination";
 
 function App() {
   const [ideas, setIdeas] = useState(INITIAL_IDEAS);
@@ -16,6 +18,10 @@ function App() {
   const [sortOrder, setSortOrder] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [flashCardId, setFlashCardId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const paginationRef = useRef(null);
+  const preservePaginationScrollRef = useRef(false);
+  const paginationScrollYRef = useRef(null);
 
   const deleteTarget = ideas.find((idea) => idea.id === deleteTargetId);
 
@@ -40,6 +46,50 @@ function App() {
     });
   }, [ideas, categoryFilter, sortOrder]);
 
+  const totalPages = Math.max(1, Math.ceil(displayedIdeas.length / PAGE_SIZE));
+
+  const paginatedIdeas = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return displayedIdeas.slice(start, start + PAGE_SIZE);
+  }, [displayedIdeas, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [categoryFilter, sortOrder]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    if (!flashCardId) return;
+
+    const index = displayedIdeas.findIndex((idea) => idea.id === flashCardId);
+    if (index >= 0) {
+      setCurrentPage(Math.floor(index / PAGE_SIZE) + 1);
+    }
+  }, [flashCardId, displayedIdeas]);
+
+  useLayoutEffect(() => {
+    if (!preservePaginationScrollRef.current) return;
+
+    preservePaginationScrollRef.current = false;
+    const yBefore = paginationScrollYRef.current;
+    if (yBefore == null || !paginationRef.current) return;
+
+    const yAfter = paginationRef.current.getBoundingClientRect().top;
+    window.scrollBy({ top: yAfter - yBefore });
+  }, [currentPage]);
+
+  function handlePageChange(newPage) {
+    paginationScrollYRef.current =
+      paginationRef.current?.getBoundingClientRect().top ?? null;
+    preservePaginationScrollRef.current = true;
+    setCurrentPage(newPage);
+  }
+
   function handleAddCategory(name) {
     const trimmed = name.trim();
     if (!trimmed) return "분야 이름을 입력해주세요.";
@@ -52,6 +102,7 @@ function App() {
   function handleAddIdea(idea) {
     setIdeas((prev) => [idea, ...prev]);
     setFlashCardId(idea.id);
+    setCurrentPage(1);
   }
 
   function handleUpdateIdea(updatedIdea) {
@@ -100,13 +151,24 @@ function App() {
             categoryFilter={categoryFilter}
             onCategoryFilterChange={setCategoryFilter}
           />
-          <CardGrid
-            ideas={displayedIdeas}
-            editingId={editingIdea?.id ?? null}
-            flashCardId={flashCardId}
-            onEdit={setEditingIdea}
-            onDelete={handleDeleteRequest}
-          />
+          <div
+            className={`card-board ${totalPages > 1 ? "card-board--paged" : ""}`}
+          >
+            <CardGrid
+              ideas={paginatedIdeas}
+              editingId={editingIdea?.id ?? null}
+              flashCardId={flashCardId}
+              onEdit={setEditingIdea}
+              onDelete={handleDeleteRequest}
+            />
+            <div ref={paginationRef} className="pagination-anchor">
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          </div>
         </div>
       </main>
       <ConfirmDialog
