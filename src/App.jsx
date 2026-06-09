@@ -8,15 +8,22 @@ import CardGrid from "./components/CardGrid";
 import Pagination from "./components/Pagination";
 import ConfirmDialog from "./components/ConfirmDialog";
 import ScrollButtons from "./components/ScrollButtons";
-import { INITIAL_IDEAS } from "./data/initialIdeas";
 import { INITIAL_CATEGORIES } from "./constants/categories";
 import { PAGE_SIZE } from "./constants/pagination";
 import { isIdeaOwner } from "./lib/ideaPermissions";
+import {
+  createIdea,
+  deleteIdea,
+  fetchIdeasByAuthor,
+  updateIdea,
+} from "./lib/ideasApi";
 
 function App() {
-  const { user, isLoggedIn, openLogin } = useAuth();
-  const [ideas, setIdeas] = useState(INITIAL_IDEAS);
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+  const { user, isLoggedIn, isLoading: isAuthLoading, openLogin } = useAuth();
+  const [ideas, setIdeas] = useState([]);
+  const [ideasLoading, setIdeasLoading] = useState(false);
+  const [ideasError, setIdeasError] = useState("");
+  const [categories] = useState(INITIAL_CATEGORIES);
   const [editingIdea, setEditingIdea] = useState(null);
   const [viewingIdea, setViewingIdea] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
@@ -42,6 +49,8 @@ function App() {
 
     setEditingIdea(null);
     setViewingIdea(null);
+    setIdeas([]);
+    setIdeasError("");
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -61,6 +70,35 @@ function App() {
 
     setViewingIdea(null);
   }, [user?.id, viewingIdea]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    let cancelled = false;
+
+    async function loadIdeas() {
+      setIdeasLoading(true);
+      setIdeasError("");
+
+      try {
+        const data = await fetchIdeasByAuthor(user.id);
+        if (!cancelled) setIdeas(data);
+      } catch (error) {
+        if (!cancelled) {
+          setIdeas([]);
+          setIdeasError(error.message);
+        }
+      } finally {
+        if (!cancelled) setIdeasLoading(false);
+      }
+    }
+
+    loadIdeas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const displayedIdeas = useMemo(() => {
     if (!user?.id) return [];
@@ -123,29 +161,24 @@ function App() {
     setCurrentPage(newPage);
   }
 
-  // --- 새 분야 추가 (추후 활성화) ---
-  // function handleAddCategory(name) {
-  //   const trimmed = name.trim();
-  //   if (!trimmed) return "분야 이름을 입력해주세요.";
-  //   if (categories.includes(trimmed)) return "이미 등록된 분야입니다.";
-  //
-  //   setCategories((prev) => [...prev, trimmed]);
-  //   return null;
-  // }
-  // ---
-
-  function handleAddIdea(idea) {
+  async function handleAddIdea(ideaData) {
     if (!isLoggedIn || !user) {
       openLogin();
       return;
     }
 
-    setIdeas((prev) => [{ ...idea, authorId: user.id }, ...prev]);
-    setFlashCardId(idea.id);
-    setCurrentPage(1);
+    try {
+      setIdeasError("");
+      const created = await createIdea(user.id, ideaData);
+      setIdeas((prev) => [created, ...prev]);
+      setFlashCardId(created.id);
+      setCurrentPage(1);
+    } catch (error) {
+      setIdeasError(error.message);
+    }
   }
 
-  function handleUpdateIdea(updatedIdea) {
+  async function handleUpdateIdea(updatedIdea) {
     if (!isLoggedIn || !user) {
       openLogin();
       return;
@@ -154,16 +187,23 @@ function App() {
     const existing = ideas.find((idea) => idea.id === updatedIdea.id);
     if (!existing || !isIdeaOwner(existing, user.id)) return;
 
-    setIdeas((prev) =>
-      prev.map((idea) =>
-        idea.id === updatedIdea.id
-          ? { ...updatedIdea, authorId: existing.authorId }
-          : idea,
-      ),
-    );
-    setEditingIdea(null);
-    setViewingIdea(null);
-    setFlashCardId(updatedIdea.id);
+    try {
+      setIdeasError("");
+      const saved = await updateIdea(updatedIdea.id, {
+        category: updatedIdea.category,
+        title: updatedIdea.title,
+        description: updatedIdea.description,
+        authorId: user.id,
+      });
+      setIdeas((prev) =>
+        prev.map((idea) => (idea.id === saved.id ? saved : idea)),
+      );
+      setEditingIdea(null);
+      setViewingIdea(null);
+      setFlashCardId(saved.id);
+    } catch (error) {
+      setIdeasError(error.message);
+    }
   }
 
   function handleViewIdea(idea) {
@@ -199,7 +239,7 @@ function App() {
     setDeleteTargetId(id);
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!deleteTargetId || !user) return;
 
     const idea = ideas.find((item) => item.id === deleteTargetId);
@@ -208,19 +248,34 @@ function App() {
       return;
     }
 
-    setIdeas((prev) => prev.filter((idea) => idea.id !== deleteTargetId));
-    if (editingIdea?.id === deleteTargetId) {
-      setEditingIdea(null);
+    try {
+      setIdeasError("");
+      await deleteIdea(deleteTargetId, user.id);
+      setIdeas((prev) => prev.filter((item) => item.id !== deleteTargetId));
+      if (editingIdea?.id === deleteTargetId) {
+        setEditingIdea(null);
+      }
+      if (viewingIdea?.id === deleteTargetId) {
+        setViewingIdea(null);
+      }
+      setDeleteTargetId(null);
+    } catch (error) {
+      setIdeasError(error.message);
+      setDeleteTargetId(null);
     }
-    if (viewingIdea?.id === deleteTargetId) {
-      setViewingIdea(null);
-    }
-    setDeleteTargetId(null);
   }
 
   function handleCancelDelete() {
     setDeleteTargetId(null);
   }
+
+  const cardEmptyMessage = ideasError
+    ? ideasError
+    : isAuthLoading || ideasLoading
+      ? "아이디어를 불러오는 중..."
+      : isLoggedIn
+        ? "해당 분야의 아이디어가 없습니다."
+        : "로그인 후 본인의 아이디어를 확인할 수 있습니다.";
 
   return (
     <>
@@ -232,7 +287,6 @@ function App() {
             isLoggedIn={isLoggedIn}
             onLoginRequest={openLogin}
             onAdd={handleAddIdea}
-            // onAddCategory={handleAddCategory} // TODO: 새 분야 추가
             viewingIdea={viewingIdea}
             editingIdea={editingIdea}
             onUpdate={handleUpdateIdea}
@@ -252,11 +306,8 @@ function App() {
             <CardGrid
               ideas={paginatedIdeas}
               currentUserId={user?.id ?? null}
-              emptyMessage={
-                isLoggedIn
-                  ? "해당 분야의 아이디어가 없습니다."
-                  : "로그인 후 본인의 아이디어를 확인할 수 있습니다."
-              }
+              emptyMessage={cardEmptyMessage}
+              isLoading={isAuthLoading || ideasLoading}
               viewingId={viewingIdea?.id ?? null}
               editingId={editingIdea?.id ?? null}
               flashCardId={flashCardId}

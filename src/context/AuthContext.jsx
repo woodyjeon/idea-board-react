@@ -1,22 +1,45 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import LoginModal from "../components/LoginModal";
 import {
-  ensureDefaultUser,
-  getSession,
-  loginUser,
-  logoutUser,
-  signupUser,
-} from "../lib/authStorage";
+  getCurrentUser,
+  loginWithEmail,
+  logout,
+  signupWithEmail,
+  subscribeToAuthChanges,
+} from "../lib/authApi";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   useEffect(() => {
-    ensureDefaultUser();
-    setUser(getSession());
+    let isMounted = true;
+
+    getCurrentUser()
+      .then((profile) => {
+        if (isMounted) setUser(profile);
+      })
+      .catch(() => {
+        if (isMounted) setUser(null);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    const { data } = subscribeToAuthChanges((profile) => {
+      if (isMounted) {
+        setUser(profile);
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   function openLogin() {
@@ -27,8 +50,8 @@ export function AuthProvider({ children }) {
     setLoginModalOpen(false);
   }
 
-  function login(email, password) {
-    const result = loginUser(email, password);
+  async function login(email, password) {
+    const result = await loginWithEmail(email, password);
     if (result.error) return result.error;
 
     setUser(result.user);
@@ -36,8 +59,8 @@ export function AuthProvider({ children }) {
     return null;
   }
 
-  function signup(formData) {
-    const result = signupUser(formData);
+  async function signup(formData) {
+    const result = await signupWithEmail(formData);
     if (result.error) return result.error;
 
     setUser(result.user);
@@ -45,8 +68,8 @@ export function AuthProvider({ children }) {
     return null;
   }
 
-  function logout() {
-    logoutUser();
+  async function signOut() {
+    await logout();
     setUser(null);
   }
 
@@ -55,9 +78,10 @@ export function AuthProvider({ children }) {
       value={{
         user,
         isLoggedIn: Boolean(user),
+        isLoading,
         login,
         signup,
-        logout,
+        logout: signOut,
         openLogin,
         closeLogin,
       }}

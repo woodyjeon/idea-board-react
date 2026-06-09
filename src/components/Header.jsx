@@ -1,8 +1,10 @@
 import sparkLogo from "../assets/spark-board-logo.svg";
 import { useAuth } from "../context/AuthContext";
+import { isLocalDataMode } from "../lib/dataMode";
 
 function Header() {
   const { user, isLoggedIn, openLogin, logout } = useAuth();
+  const isLocal = isLocalDataMode();
 
   return (
     <header className="board-header">
@@ -15,6 +17,11 @@ function Header() {
             aria-hidden="true"
           />
           <h1>아이디어 스파크보드</h1>
+          {isLocal && (
+            <span className="data-mode-badge" title="localStorage 모드">
+              로컬
+            </span>
+          )}
         </div>
         <div className="board-header-auth">
           {isLoggedIn ? (

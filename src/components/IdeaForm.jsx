@@ -98,7 +98,7 @@ function IdeaForm({
     }
   }, [categories, category]);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     const trimmedTitle = title.trim();
@@ -114,11 +114,15 @@ function IdeaForm({
     };
 
     if (editingIdea) {
-      onUpdate({ ...ideaData, id: editingIdea.id, authorId: editingIdea.authorId });
+      await onUpdate({
+        ...ideaData,
+        id: editingIdea.id,
+        authorId: editingIdea.authorId,
+      });
       return;
     }
 
-    onAdd({ ...ideaData, id: crypto.randomUUID() });
+    await onAdd(ideaData);
     setTitle("");
     setCategory(categories[0] ?? "");
     setDescription("");

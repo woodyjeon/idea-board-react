@@ -50,6 +50,17 @@ body {
   justify-content: center;
   gap: 10px;
 }
+
+.data-mode-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #e8f4fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
+}
+
 .board-header-auth {
   position: absolute;
   right: 0;
@@ -546,6 +557,12 @@ body {
 .card-grid-empty p {
   margin: 0;
 }
+.card-grid-empty--loading p {
+  color: #888;
+}
+.card-grid-empty:not(.card-grid-empty--loading) p {
+  word-break: keep-all;
+}
 /* 카드 한 장 */
 .card {
   position: relative;
@@ -734,6 +751,10 @@ body {
 }
 .confirm-btn-ok:hover {
   background: var(--color-primary-hover);
+}
+.confirm-btn-ok:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 /* 태블릿 (960px 미만) */

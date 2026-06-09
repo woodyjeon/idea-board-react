@@ -1,16 +1,8 @@
 import { DEMO_USER_ID, TEST_USER_ID } from "./users.js";
 
 /**
- * 초기 아이디어 시드 데이터
- *
- * 추후 DB ideas 테이블로 이전 예정
- * | column      | type    | note             |
- * |-------------|---------|------------------|
- * | id          | integer | PK               |
- * | authorId    | integer | users.id, FK     |
- * | category    | string  |                  |
- * | title       | string  |                  |
- * | description | string  |                  |
+ * 로컬 모드 시드 아이디어 (localStorage 초기값)
+ * Supabase 시드 SQL: supabase/schema.sql
  */
 const DEMO_INITIAL_IDEAS = [
   {

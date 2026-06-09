@@ -6,6 +6,7 @@ function CardGrid({
   ideas,
   currentUserId,
   emptyMessage = "해당 분야의 아이디어가 없습니다.",
+  isLoading = false,
   viewingId,
   editingId,
   flashCardId,
@@ -15,7 +16,9 @@ function CardGrid({
 }) {
   if (ideas.length === 0) {
     return (
-      <section className="card-grid card-grid-empty">
+      <section
+        className={`card-grid card-grid-empty ${isLoading ? "card-grid-empty--loading" : ""}`}
+      >
         <p>{emptyMessage}</p>
       </section>
     );

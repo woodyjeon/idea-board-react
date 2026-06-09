@@ -1,37 +1,34 @@
-/**
- * 초기 사용자 시드 데이터
- *
- * 추후 DB users 테이블로 이전 예정
- * | column   | type    | note              |
- * |----------|---------|-------------------|
- * | id       | integer | PK, auto increment|
- * | email    | string  | unique, lowercase |
- * | password | string  | 추후 hash 저장    |
- * | name     | string  | 표시 이름         |
- */
-export const INITIAL_USERS = [
+/** 로컬 모드 시드 사용자 (localStorage 초기값) */
+export const LOCAL_USERS = [
   {
     id: 1,
-    email: "demo@demo.com",
-    password: "demo1234",
-    name: "데모",
+    email: "test1@example.com",
+    password: "test1234",
+    name: "test1",
   },
   {
     id: 2,
-    email: "test@test.com",
+    email: "test2@example.com",
     password: "test1234",
-    name: "테스트",
+    name: "test2",
+  },
+];
+
+/** Supabase 모드 데모 계정 (로그인 안내용 — DB 시드는 schema.sql) */
+export const SUPABASE_DEMO_USERS = [
+  {
+    id: 1,
+    email: "demo1@example.com",
+    password: "demo1234",
+    name: "demo1",
+  },
+  {
+    id: 2,
+    email: "demo2@example.com",
+    password: "demo1234",
+    name: "demo2",
   },
 ];
 
 export const DEMO_USER_ID = 1;
 export const TEST_USER_ID = 2;
-
-/** 이메일 변경 전 데모 계정 (localStorage 마이그레이션용) */
-export const LEGACY_DEMO_EMAIL = "demo@sparkboard.local";
-
-/** 문자열 id 사용 시 localStorage 마이그레이션용 */
-export const LEGACY_USER_IDS = {
-  demo: "demo-user",
-  test: "test-user",
-};

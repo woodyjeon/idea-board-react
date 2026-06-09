@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { INITIAL_USERS } from "../data/users.js";
+import { LOCAL_USERS, SUPABASE_DEMO_USERS } from "../data/users.js";
+import { isLocalDataMode } from "../lib/dataMode";
 
 function LoginModal({ isOpen, onClose }) {
   const { login, signup } = useAuth();
@@ -9,6 +10,7 @@ function LoginModal({ isOpen, onClose }) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -31,18 +33,25 @@ function LoginModal({ isOpen, onClose }) {
     }
   }, [isOpen]);
 
+  const demoUsers = isLocalDataMode() ? LOCAL_USERS : SUPABASE_DEMO_USERS;
+
   if (!isOpen) return null;
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
 
-    const message =
-      mode === "login"
-        ? login(email, password)
-        : signup({ email, password, name });
+    try {
+      const message =
+        mode === "login"
+          ? await login(email, password)
+          : await signup({ email, password, name });
 
-    if (message) setError(message);
+      if (message) setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -121,7 +130,7 @@ function LoginModal({ isOpen, onClose }) {
 
           {mode === "login" && (
             <p className="auth-hint">
-              {INITIAL_USERS.map((user) => (
+              {demoUsers.map((user) => (
                 <span key={user.id}>
                   {user.name}: {user.email} / {user.password}
                   <br />
@@ -131,8 +140,12 @@ function LoginModal({ isOpen, onClose }) {
           )}
 
           <div className="confirm-dialog-actions confirm-dialog-actions--single">
-            <button type="submit" className="confirm-btn-ok">
-              {mode === "login" ? "로그인" : "가입하기"}
+            <button type="submit" className="confirm-btn-ok" disabled={isSubmitting}>
+              {isSubmitting
+                ? "처리 중..."
+                : mode === "login"
+                  ? "로그인"
+                  : "가입하기"}
             </button>
           </div>
         </form>

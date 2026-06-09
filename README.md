@@ -8,9 +8,15 @@
 
 ### 아이디어 관리
 - 새 아이디어 등록 (제목, 분야, 설명)
-- 카드에서 **수정** · **삭제**
+- 카드에서 **수정** · **삭제** (본인 글만)
+- 카드 클릭 시 **읽기** 모드
 - 수정 시 폼으로 자동 스크롤 + 제목 입력 포커스
 - 등록·수정 완료 시 카드 하이라이트 피드백
+
+### 로그인 · 권한
+- Supabase Auth (이메일/비밀번호)
+- 로그인한 사용자별 아이디어 목록 표시
+- 본인이 작성한 글만 등록·수정·삭제
 
 ### 분야 · 필터 · 정렬
 - 분야별 필터 (전체 / AI / 바이오 / 반도체 / 에너지 / 기타)
@@ -19,19 +25,13 @@
 ### 목록 · 페이지네이션
 - 카드 그리드 (데스크톱 3열 / 태블릿 2열 / 모바일 1열)
 - 페이지당 9개 표시, 이전 · 다음 탐색
-- 페이지 전환 시 스크롤 위치 고정
-
-### UI · UX
-- [Noto Sans KR](https://fonts.google.com/noto/specimen/Noto+Sans+KR) 폰트 (OFL 라이선스)
-- 입력 포커스 시 primary 색 테두리
-- 우하단 브랜드 워터마크
-- 맨 위 / 맨 아래 스크롤 버튼 (우하단)
 
 ## 기술 스택
 
 | 구분 | 기술 |
 |------|------|
 | Frontend | React 19, Vite 8 |
+| Backend / DB | [Supabase](https://supabase.com/) (PostgreSQL, Auth, RLS) |
 | 스타일 | CSS (커스텀) |
 | 아이콘 | [Lucide React](https://lucide.dev/) |
 | 배포 | [Vercel](https://vercel.com/) |
@@ -41,8 +41,52 @@
 ### 요구 사항
 - Node.js 18+
 - npm
+- Supabase 프로젝트 (DB 연동 모드만 해당)
 
-### 설치 및 실행
+### 실행 모드
+
+| 모드 | 설정 | 설명 |
+|------|------|------|
+| **local** | `VITE_DATA_MODE=local` 또는 Supabase env 없음 | localStorage, DB 불필요 |
+| **supabase** | Supabase env 설정 (기본) | Auth + PostgreSQL |
+
+### 1. Supabase 설정 (supabase 모드만)
+
+1. [Supabase](https://supabase.com/)에서 프로젝트 생성
+2. **SQL Editor**에서 `supabase/schema.sql` 전체 실행
+3. **Authentication → Providers → Email**에서 **Enable Email provider** 켜기  
+   - **Confirm email** 비활성화 (개발·데모용)
+4. **Authentication → Users**에서 데모 계정 생성 (또는 앱에서 회원가입)
+   - `demo1@example.com` / `demo1234`
+   - `demo2@example.com` / `demo1234`
+5. **Project Settings → API**에서 URL과 `anon` key 복사
+
+### 2. 환경 변수
+
+```bash
+cp .env.example .env
+```
+
+`.env` 파일 (`.env.example` 복사 후 값 입력):
+
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your-key
+
+# DB 없이 테스트할 때
+# VITE_DATA_MODE=local
+```
+
+Supabase env는 유지한 채 `.env`에 `VITE_DATA_MODE=local`을 넣으면 test1/test2 localStorage 모드로 동작합니다. demo1/demo2 DB 모드로 돌아가려면 해당 줄을 주석 처리하거나 `VITE_DATA_MODE=supabase`로 설정하세요.
+
+| 모드 | 계정 |
+|------|------|
+| local | `test1@example.com` / `test1234`, `test2@example.com` / `test1234` |
+| supabase | `demo1@example.com` / `demo1234`, `demo2@example.com` / `demo1234` |
+
+Vercel 배포 시에도 동일한 환경 변수를 설정하세요.
+
+### 3. 설치 및 실행
 
 ```bash
 git clone https://github.com/woodyjeon/idea-board-react.git
@@ -57,49 +101,45 @@ npm run dev
 
 ```bash
 npm run build
-npm run preview   # 빌드 결과 미리보기
-```
-
-### 린트
-
-```bash
-npm run lint
+npm run preview
 ```
 
 ## 프로젝트 구조
 
 ```
 src/
-├── App.jsx              # 상태 관리, 필터·정렬·페이지네이션
-├── App.css              # 전역·컴포넌트 스타일
-├── components/
-│   ├── Header.jsx       # 헤더
-│   ├── IdeaForm.jsx     # 등록·수정 폼
-│   ├── SortBar.jsx      # 분야 필터 + 정렬
-│   ├── CategoryFilter.jsx
-│   ├── CardGrid.jsx     # 카드 목록
-│   ├── Card.jsx
-│   ├── Pagination.jsx
-│   ├── ScrollButtons.jsx
-│   ├── ConfirmDialog.jsx
-│   └── AlertDialog.jsx
-├── constants/
-│   ├── categories.js    # 초기 분야
-│   └── pagination.js    # PAGE_SIZE (9)
-└── data/
-    └── initialIdeas.js  # 초기 샘플 아이디어
+├── App.jsx
+├── context/
+│   └── AuthContext.jsx    # Supabase Auth 세션
+├── lib/
+│   ├── supabase.js        # Supabase 클라이언트
+│   ├── dataMode.js        # local / supabase 모드 선택
+│   ├── localData.js       # localStorage 구현
+│   ├── authApi.js         # 로그인/회원가입
+│   ├── ideasApi.js        # 아이디어 CRUD
+│   └── ideaPermissions.js
+├── data/
+│   ├── users.js           # 로컬 모드 시드 + 로그인 데모 안내
+│   └── initialIdeas.js    # 로컬 모드 시드 (Supabase는 schema.sql)
+└── components/
+    └── ...
+
+supabase/
+└── schema.sql             # 테이블, RLS, 시드 데이터
 ```
 
-## 설정
+## 데이터베이스
 
-| 파일 | 설명 |
-|------|------|
-| `src/constants/pagination.js` | `PAGE_SIZE` — 페이지당 카드 수 (기본 9) |
-| `src/constants/categories.js` | 초기 분야 목록 |
-| `src/data/initialIdeas.js` | 앱 시작 시 표시되는 샘플 아이디어 |
+| 테이블 | 설명 |
+|--------|------|
+| `users` | 숫자 PK, 이메일·이름 (Auth와 이메일로 연동) |
+| `ideas` | `author_id` → `users.id` |
+
+RLS로 로그인한 사용자의 이메일과 일치하는 프로필·아이디어만 접근 가능합니다.
 
 ## 배포
 
-Vercel에 연결된 저장소의 `main` 브랜치 push 시 자동 배포됩니다.
+Vercel `main` 브랜치 push 시 자동 배포됩니다.  
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` 환경 변수 설정이 필요합니다.
 
 - **Production:** [https://idea-board-react-five.vercel.app/](https://idea-board-react-five.vercel.app/)
