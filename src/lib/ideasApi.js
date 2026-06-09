@@ -1,7 +1,7 @@
 import { isLocalDataMode } from "./dataMode";
 import * as localData from "./localData";
 import { mapIdeaFromDb } from "./mappers";
-import { isSupabaseConfigured, supabase } from "./supabase";
+import { getSupabase, isSupabaseConfigured } from "./supabase";
 
 function ensureSupabaseConfigured() {
   if (!isSupabaseConfigured()) {
@@ -18,7 +18,7 @@ function toDbErrorMessage(error) {
 async function fetchSupabaseIdeasByAuthor(authorId) {
   ensureSupabaseConfigured();
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("ideas")
     .select("id, author_id, category, title, description")
     .eq("author_id", authorId)
@@ -31,7 +31,7 @@ async function fetchSupabaseIdeasByAuthor(authorId) {
 async function createSupabaseIdea(authorId, { category, title, description }) {
   ensureSupabaseConfigured();
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("ideas")
     .insert({
       author_id: authorId,
@@ -52,7 +52,7 @@ async function updateSupabaseIdea(
 ) {
   ensureSupabaseConfigured();
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("ideas")
     .update({ category, title, description })
     .eq("id", ideaId)
@@ -67,7 +67,7 @@ async function updateSupabaseIdea(
 async function deleteSupabaseIdea(ideaId, authorId) {
   ensureSupabaseConfigured();
 
-  const { error } = await supabase
+  const { error } = await getSupabase()
     .from("ideas")
     .delete()
     .eq("id", ideaId)

@@ -1,7 +1,7 @@
 import { isLocalDataMode } from "./dataMode";
 import * as localData from "./localData";
 import { mapUserFromDb } from "./mappers";
-import { isSupabaseConfigured, supabase } from "./supabase";
+import { getSupabase, isSupabaseConfigured } from "./supabase";
 
 function toAuthErrorMessage(error) {
   const message = error?.message ?? "";
@@ -40,7 +40,7 @@ function ensureSupabaseConfigured() {
 }
 
 async function resolveProfile(authUser, nameForSignup) {
-  const { data, error } = await supabase.rpc("ensure_profile", {
+  const { data, error } = await getSupabase().rpc("ensure_profile", {
     p_name:
       nameForSignup?.trim() ||
       authUser.user_metadata?.name ||
@@ -56,7 +56,7 @@ async function getSupabaseCurrentUser() {
 
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await getSupabase().auth.getSession();
 
   if (!session?.user) return null;
 
@@ -66,7 +66,7 @@ async function getSupabaseCurrentUser() {
 function subscribeToSupabaseAuthChanges(onUserChange) {
   ensureSupabaseConfigured();
 
-  return supabase.auth.onAuthStateChange(async (_event, session) => {
+  return getSupabase().auth.onAuthStateChange(async (_event, session) => {
     if (!session?.user) {
       onUserChange(null);
       return;
@@ -84,7 +84,7 @@ function subscribeToSupabaseAuthChanges(onUserChange) {
 async function loginWithSupabase(email, password) {
   ensureSupabaseConfigured();
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await getSupabase().auth.signInWithPassword({
     email: email.trim().toLowerCase(),
     password,
   });
@@ -95,7 +95,7 @@ async function loginWithSupabase(email, password) {
     const user = await resolveProfile(data.user);
     return { user };
   } catch (profileError) {
-    await supabase.auth.signOut();
+    await getSupabase().auth.signOut();
     return {
       error:
         profileError.message ||
@@ -116,7 +116,7 @@ async function signupWithSupabase({ email, password, name }) {
     return { error: "비밀번호는 4자 이상 입력해주세요." };
   }
 
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await getSupabase().auth.signUp({
     email: trimmedEmail,
     password,
     options: {
@@ -138,7 +138,7 @@ async function signupWithSupabase({ email, password, name }) {
     const user = await resolveProfile(data.user, trimmedName);
     return { user };
   } catch (profileError) {
-    await supabase.auth.signOut();
+    await getSupabase().auth.signOut();
     return {
       error:
         profileError.message ||
@@ -149,7 +149,7 @@ async function signupWithSupabase({ email, password, name }) {
 
 async function logoutFromSupabase() {
   ensureSupabaseConfigured();
-  const { error } = await supabase.auth.signOut();
+  const { error } = await getSupabase().auth.signOut();
   if (error) throw error;
 }
 

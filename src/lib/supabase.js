@@ -5,14 +5,23 @@ const supabaseKey =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn(
-    "Supabase 환경 변수가 없습니다. local 모드로 동작하거나 .env에 VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY를 설정하세요.",
-  );
-}
-
-export const supabase = createClient(supabaseUrl ?? "", supabaseKey ?? "");
+/** @type {import("@supabase/supabase-js").SupabaseClient | null} */
+let supabaseClient = null;
 
 export function isSupabaseConfigured() {
   return Boolean(supabaseUrl && supabaseKey);
+}
+
+export function getSupabase() {
+  if (!isSupabaseConfigured()) {
+    throw new Error(
+      "Supabase가 설정되지 않았습니다. Vercel/ .env에 VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY를 설정하거나 VITE_DATA_MODE=local 을 사용하세요.",
+    );
+  }
+
+  if (!supabaseClient) {
+    supabaseClient = createClient(supabaseUrl, supabaseKey);
+  }
+
+  return supabaseClient;
 }
