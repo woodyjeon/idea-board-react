@@ -29,15 +29,131 @@ body {
 
 /* 헤더 */
 .board-header {
+  width: 100%;
+  max-width: var(--board-width);
+  margin: 0 auto 24px;
+  box-sizing: border-box;
   text-align: center;
-  margin-bottom: 24px;
+}
+.board-header-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 8px;
+  min-height: 42px;
 }
 .board-header-brand {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-bottom: 8px;
+}
+.board-header-auth {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.auth-user-name {
+  font-size: 0.9rem;
+  color: #555;
+}
+.auth-btn {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #333;
+}
+.auth-btn:hover {
+  background: #f5f5f5;
+}
+.auth-btn--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
+}
+.auth-btn--primary:hover {
+  background: var(--color-primary-hover);
+}
+.login-prompt {
+  text-align: center;
+}
+.login-prompt-text {
+  margin: 12px 0 20px;
+  color: #666;
+  line-height: 1.6;
+}
+.login-prompt-btn {
+  margin: 0 auto;
+}
+.auth-dialog {
+  max-width: 420px;
+}
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 4px;
+  background: #f0f2f5;
+  border-radius: 8px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #666;
+}
+.auth-tab--active {
+  background: white;
+  color: #333;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.auth-form label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #444;
+  margin-top: 4px;
+}
+.auth-form label:first-of-type {
+  margin-top: 0;
+}
+.auth-form input {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+.auth-form input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+.auth-error {
+  margin: 4px 0 0;
+  color: #d32f2f;
+  font-size: 0.85rem;
+}
+.auth-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #888;
 }
 .board-header-logo {
   width: 42px;
@@ -56,6 +172,8 @@ body {
 /* 입력 폼 */
 .form-section {
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .idea-form {
   display: flex;
@@ -212,6 +330,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--board-gap);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .sort-bar {
@@ -222,6 +342,7 @@ body {
   flex-wrap: wrap;
   box-sizing: border-box;
   width: 100%;
+  min-width: 0;
   padding: 12px 16px;
   background: white;
   border-radius: 12px;
@@ -383,6 +504,13 @@ body {
   cursor: default;
 }
 
+/* 카드 보드 */
+.card-board {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 /* 카드 보드 (페이지네이션 영역 고정) */
 .card-board--paged .card-grid:not(.card-grid-empty) {
   min-height: calc(
@@ -401,9 +529,14 @@ body {
   grid-template-columns: repeat(var(--board-columns), minmax(0, 1fr));
   gap: var(--board-gap);
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .card-grid-empty {
   display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 32px;
   text-align: center;
   background: white;
@@ -419,6 +552,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-width: 0;
   box-sizing: border-box;
   background: white;
   padding: 16px;
@@ -470,22 +604,23 @@ body {
 }
 .card-title {
   margin: 8px 0 4px;
+  overflow-wrap: anywhere;
 }
 .card-desc {
   flex: 1;
   color: #555;
+  overflow-wrap: anywhere;
 }
 .card-body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
 }
 .card-body--clickable {
   cursor: pointer;
   border-radius: 8px;
-  margin: -4px;
-  padding: 4px;
 }
 .card-body--clickable:focus-visible {
   outline: 2px solid var(--color-primary);
@@ -617,6 +752,19 @@ body {
     margin-bottom: 20px;
   }
 
+  .board-header-row {
+    flex-wrap: wrap;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .board-header-auth {
+    position: static;
+    transform: none;
+    width: 100%;
+    justify-content: center;
+  }
+
   .board-header-logo {
     width: 36px;
     height: 36px;
@@ -651,8 +799,17 @@ body {
     margin-bottom: 16px;
   }
 
+  .board-header-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
   .board-header-brand {
     gap: 8px;
+  }
+
+  .auth-user-name {
+    font-size: 0.85rem;
   }
 
   .board-header-logo {

@@ -4,6 +4,8 @@ import CategoryFilter from "./CategoryFilter";
 
 function IdeaForm({
   categories,
+  isLoggedIn,
+  onLoginRequest,
   onAdd,
   // onAddCategory, // TODO: 새 분야 추가
   viewingIdea,
@@ -112,7 +114,7 @@ function IdeaForm({
     };
 
     if (editingIdea) {
-      onUpdate({ ...ideaData, id: editingIdea.id });
+      onUpdate({ ...ideaData, id: editingIdea.id, authorId: editingIdea.authorId });
       return;
     }
 
@@ -121,6 +123,26 @@ function IdeaForm({
     setCategory(categories[0] ?? "");
     setDescription("");
     setShowSuccessFlash(true);
+  }
+
+  if (!isLoggedIn && !isReadMode) {
+    return (
+      <section className="form-section">
+        <div className="idea-form login-prompt">
+          <h2 className="form-heading">아이디어 등록</h2>
+          <p className="login-prompt-text">
+            로그인 후 본인이 작성한 아이디어만 등록·수정·삭제할 수 있습니다.
+          </p>
+          <button
+            type="button"
+            className="auth-btn auth-btn--primary login-prompt-btn"
+            onClick={onLoginRequest}
+          >
+            로그인
+          </button>
+        </div>
+      </section>
+    );
   }
 
   if (isReadMode) {

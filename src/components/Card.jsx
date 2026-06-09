@@ -1,5 +1,6 @@
 function Card({
   idea,
+  canManage,
   isViewing,
   isEditing,
   isFlashing,
@@ -41,7 +42,7 @@ function Card({
         <h3 className="card-title">{title}</h3>
         <p className="card-desc">{description}</p>
       </div>
-      {!isEditing && (
+      {canManage && !isEditing && (
         <div className="card-actions">
           <button
             type="button"
