@@ -93,15 +93,16 @@ body {
 .idea-form select,
 .idea-form textarea {
   padding: 8px;
-  border: none;
+  border: 2px solid transparent;
   border-radius: 6px;
   background: #f0f2f5;
+  transition: border-color 0.15s;
 }
 .idea-form input:not(.filter-category-input):focus,
 .idea-form select:focus,
 .idea-form textarea:focus {
   outline: none;
-  background: var(--color-primary-light);
+  border-color: var(--color-primary);
 }
 .idea-form .form-actions button {
   padding: 10px;
@@ -247,13 +248,14 @@ body {
   align-items: center;
   min-width: 9rem;
   padding: 2px 2px 2px 12px;
-  border: none;
+  border: 2px solid transparent;
   border-radius: 999px;
   background: #f0f2f5;
   box-sizing: border-box;
+  transition: border-color 0.15s;
 }
 .filter-category-field:focus-within {
-  background: var(--color-primary-light);
+  border-color: var(--color-primary);
 }
 .filter-category-input {
   flex: 1;
