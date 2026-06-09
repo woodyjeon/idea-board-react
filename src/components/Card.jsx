@@ -1,14 +1,46 @@
-function Card({ idea, isEditing, isFlashing, onEdit, onDelete }) {
+function Card({
+  idea,
+  isViewing,
+  isEditing,
+  isFlashing,
+  onView,
+  onEdit,
+  onDelete,
+}) {
   const { id, category, title, description } = idea;
+
+  function handleCardClick() {
+    if (isEditing) return;
+    onView(idea);
+  }
+
+  function handleCardKeyDown(e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleCardClick();
+    }
+  }
 
   return (
     <article
-      className={`card ${isEditing ? "card--editing" : ""} ${isFlashing ? "card--success" : ""}`}
+      className={`card ${isViewing ? "card--viewing" : ""} ${isEditing ? "card--editing" : ""} ${isFlashing ? "card--success" : ""}`}
     >
       {isEditing && <span className="card-editing-badge">수정 중</span>}
-      <span className="card-category">{category}</span>
-      <h3 className="card-title">{title}</h3>
-      <p className="card-desc">{description}</p>
+      {isViewing && !isEditing && (
+        <span className="card-viewing-badge">열람 중</span>
+      )}
+      <div
+        className={`card-body ${isEditing ? "" : "card-body--clickable"}`}
+        onClick={handleCardClick}
+        onKeyDown={handleCardKeyDown}
+        tabIndex={isEditing ? -1 : 0}
+        role={isEditing ? undefined : "button"}
+        aria-label={isEditing ? undefined : `${title} 상세 보기`}
+      >
+        <span className="card-category">{category}</span>
+        <h3 className="card-title">{title}</h3>
+        <p className="card-desc">{description}</p>
+      </div>
       {!isEditing && (
         <div className="card-actions">
           <button

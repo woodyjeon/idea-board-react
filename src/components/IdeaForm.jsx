@@ -6,8 +6,10 @@ function IdeaForm({
   categories,
   onAdd,
   // onAddCategory, // TODO: 새 분야 추가
+  viewingIdea,
   editingIdea,
   onUpdate,
+  onCancelView,
   onCancelEdit,
 }) {
   const [title, setTitle] = useState("");
@@ -15,22 +17,46 @@ function IdeaForm({
   const [description, setDescription] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
   const [showSuccessFlash, setShowSuccessFlash] = useState(false);
+  const [showEditFlash, setShowEditFlash] = useState(false);
+  const [showViewFlash, setShowViewFlash] = useState(false);
   const formSectionRef = useRef(null);
   const titleInputRef = useRef(null);
+  const prevEditingIdRef = useRef(null);
+  const prevViewingIdRef = useRef(null);
+
+  const isReadMode = viewingIdea && !editingIdea;
 
   useEffect(() => {
+    if (isReadMode) {
+      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      if (prevViewingIdRef.current !== viewingIdea.id) {
+        setShowViewFlash(true);
+      }
+      prevViewingIdRef.current = viewingIdea.id;
+      return;
+    }
+
+    prevViewingIdRef.current = null;
+
     if (editingIdea) {
       setTitle(editingIdea.title);
       setCategory(editingIdea.category);
       setDescription(editingIdea.description);
       formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      if (prevEditingIdRef.current !== editingIdea.id) {
+        setShowEditFlash(true);
+      }
+      prevEditingIdRef.current = editingIdea.id;
       return;
     }
 
+    prevEditingIdRef.current = null;
     setTitle("");
     setCategory(categories[0] ?? "");
     setDescription("");
-  }, [editingIdea, categories]);
+  }, [viewingIdea, editingIdea, categories, isReadMode]);
 
   useLayoutEffect(() => {
     if (!editingIdea || title !== editingIdea.title) return;
@@ -49,6 +75,20 @@ function IdeaForm({
     const timer = setTimeout(() => setShowSuccessFlash(false), 1200);
     return () => clearTimeout(timer);
   }, [showSuccessFlash]);
+
+  useEffect(() => {
+    if (!showEditFlash) return;
+
+    const timer = setTimeout(() => setShowEditFlash(false), 1200);
+    return () => clearTimeout(timer);
+  }, [showEditFlash]);
+
+  useEffect(() => {
+    if (!showViewFlash) return;
+
+    const timer = setTimeout(() => setShowViewFlash(false), 1200);
+    return () => clearTimeout(timer);
+  }, [showViewFlash]);
 
   useEffect(() => {
     if (!categories.includes(category) && categories.length > 0) {
@@ -83,10 +123,46 @@ function IdeaForm({
     setShowSuccessFlash(true);
   }
 
+  if (isReadMode) {
+    return (
+      <section className="form-section" ref={formSectionRef}>
+        <div
+          className={`idea-form idea-form--reading ${showViewFlash ? "idea-form--success" : ""}`}
+        >
+          <div className="form-header">
+            <h2 className="form-heading">아이디어 상세</h2>
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={onCancelView}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+
+          <span className="form-label">제목</span>
+          <p className="idea-read-text">{viewingIdea.title}</p>
+
+          <span className="form-label">분야</span>
+          <span className="filter-btn active idea-read-category">
+            {viewingIdea.category}
+          </span>
+
+          <span className="form-label">설명</span>
+          <p className="idea-read-text idea-read-desc">
+            {viewingIdea.description || "설명이 없습니다."}
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="form-section" ref={formSectionRef}>
       <form
-        className={`idea-form ${editingIdea ? "idea-form--editing" : ""} ${showSuccessFlash ? "idea-form--success" : ""}`}
+        className={`idea-form ${editingIdea ? "idea-form--editing" : ""} ${showSuccessFlash || showEditFlash ? "idea-form--success" : ""}`}
         onSubmit={handleSubmit}
       >
         <div className="form-header">

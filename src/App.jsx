@@ -15,6 +15,7 @@ function App() {
   const [ideas, setIdeas] = useState(INITIAL_IDEAS);
   const [categories, setCategories] = useState(INITIAL_CATEGORIES);
   const [editingIdea, setEditingIdea] = useState(null);
+  const [viewingIdea, setViewingIdea] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [sortOrder, setSortOrder] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -113,7 +114,20 @@ function App() {
       prev.map((idea) => (idea.id === updatedIdea.id ? updatedIdea : idea)),
     );
     setEditingIdea(null);
+    setViewingIdea(null);
     setFlashCardId(updatedIdea.id);
+  }
+
+  function handleViewIdea(idea) {
+    setViewingIdea(idea);
+    setEditingIdea(null);
+    setFlashCardId(idea.id);
+  }
+
+  function handleEditIdea(idea) {
+    setEditingIdea(idea);
+    setViewingIdea(null);
+    setFlashCardId(idea.id);
   }
 
   function handleDeleteRequest(id) {
@@ -126,6 +140,9 @@ function App() {
     setIdeas((prev) => prev.filter((idea) => idea.id !== deleteTargetId));
     if (editingIdea?.id === deleteTargetId) {
       setEditingIdea(null);
+    }
+    if (viewingIdea?.id === deleteTargetId) {
+      setViewingIdea(null);
     }
     setDeleteTargetId(null);
   }
@@ -143,8 +160,10 @@ function App() {
             categories={categories}
             onAdd={handleAddIdea}
             // onAddCategory={handleAddCategory} // TODO: 새 분야 추가
+            viewingIdea={viewingIdea}
             editingIdea={editingIdea}
             onUpdate={handleUpdateIdea}
+            onCancelView={() => setViewingIdea(null)}
             onCancelEdit={() => setEditingIdea(null)}
           />
           <SortBar
@@ -159,9 +178,11 @@ function App() {
           >
             <CardGrid
               ideas={paginatedIdeas}
+              viewingId={viewingIdea?.id ?? null}
               editingId={editingIdea?.id ?? null}
               flashCardId={flashCardId}
-              onEdit={setEditingIdea}
+              onView={handleViewIdea}
+              onEdit={handleEditIdea}
               onDelete={handleDeleteRequest}
             />
             <div ref={paginationRef} className="pagination-anchor">
