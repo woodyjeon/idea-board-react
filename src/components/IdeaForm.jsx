@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AlertDialog from "./AlertDialog";
 import CategoryFilter from "./CategoryFilter";
 
@@ -15,6 +15,13 @@ function IdeaForm({
   const [description, setDescription] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
   const [showSuccessFlash, setShowSuccessFlash] = useState(false);
+  const formSectionRef = useRef(null);
+
+  useEffect(() => {
+    if (!editingIdea) return;
+
+    formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [editingIdea]);
 
   useEffect(() => {
     if (!showSuccessFlash) return;
@@ -70,7 +77,7 @@ function IdeaForm({
   }
 
   return (
-    <section className="form-section">
+    <section className="form-section" ref={formSectionRef}>
       <form
         className={`idea-form ${editingIdea ? "idea-form--editing" : ""} ${showSuccessFlash ? "idea-form--success" : ""}`}
         onSubmit={handleSubmit}
