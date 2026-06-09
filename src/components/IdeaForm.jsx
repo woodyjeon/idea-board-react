@@ -5,7 +5,7 @@ import CategoryFilter from "./CategoryFilter";
 function IdeaForm({
   categories,
   onAdd,
-  onAddCategory,
+  // onAddCategory, // TODO: 새 분야 추가
   editingIdea,
   onUpdate,
   onCancelEdit,
@@ -129,9 +129,9 @@ function IdeaForm({
             categories={categories}
             selected={category}
             onSelect={setCategory}
-            allowAdd
-            onAddCategory={onAddCategory}
-            onAddError={setAlertMessage}
+            // allowAdd // TODO: 새 분야 추가
+            // onAddCategory={onAddCategory}
+            // onAddError={setAlertMessage}
           />
         </div>
 

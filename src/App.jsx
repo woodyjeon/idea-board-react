@@ -91,14 +91,16 @@ function App() {
     setCurrentPage(newPage);
   }
 
-  function handleAddCategory(name) {
-    const trimmed = name.trim();
-    if (!trimmed) return "분야 이름을 입력해주세요.";
-    if (categories.includes(trimmed)) return "이미 등록된 분야입니다.";
-
-    setCategories((prev) => [...prev, trimmed]);
-    return null;
-  }
+  // --- 새 분야 추가 (추후 활성화) ---
+  // function handleAddCategory(name) {
+  //   const trimmed = name.trim();
+  //   if (!trimmed) return "분야 이름을 입력해주세요.";
+  //   if (categories.includes(trimmed)) return "이미 등록된 분야입니다.";
+  //
+  //   setCategories((prev) => [...prev, trimmed]);
+  //   return null;
+  // }
+  // ---
 
   function handleAddIdea(idea) {
     setIdeas((prev) => [idea, ...prev]);
@@ -140,7 +142,7 @@ function App() {
           <IdeaForm
             categories={categories}
             onAdd={handleAddIdea}
-            onAddCategory={handleAddCategory}
+            // onAddCategory={handleAddCategory} // TODO: 새 분야 추가
             editingIdea={editingIdea}
             onUpdate={handleUpdateIdea}
             onCancelEdit={() => setEditingIdea(null)}

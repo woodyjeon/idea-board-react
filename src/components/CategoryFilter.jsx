@@ -1,65 +1,67 @@
-import { useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+// import { useEffect, useRef, useState } from "react"; // TODO: 새 분야 추가
+// import { Plus } from "lucide-react"; // TODO: 새 분야 추가
 
 function CategoryFilter({
   categories,
   selected,
   onSelect,
   showAll = false,
-  allowAdd = false,
-  onAddCategory,
-  onAddError,
+  // allowAdd = false, // TODO: 새 분야 추가
+  // onAddCategory,
+  // onAddError,
 }) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [newCategory, setNewCategory] = useState("");
-  const inputRef = useRef(null);
-  const addWrapRef = useRef(null);
+  // --- 새 분야 추가 (추후 활성화) ---
+  // const [isAdding, setIsAdding] = useState(false);
+  // const [newCategory, setNewCategory] = useState("");
+  // const inputRef = useRef(null);
+  // const addWrapRef = useRef(null);
 
-  useEffect(() => {
-    if (isAdding) {
-      inputRef.current?.focus();
-    }
-  }, [isAdding]);
+  // useEffect(() => {
+  //   if (isAdding) {
+  //     inputRef.current?.focus();
+  //   }
+  // }, [isAdding]);
 
-  useEffect(() => {
-    if (!isAdding) return;
+  // useEffect(() => {
+  //   if (!isAdding) return;
 
-    function handlePointerDown(e) {
-      if (addWrapRef.current?.contains(e.target)) return;
-      setIsAdding(false);
-      setNewCategory("");
-    }
+  //   function handlePointerDown(e) {
+  //     if (addWrapRef.current?.contains(e.target)) return;
+  //     setIsAdding(false);
+  //     setNewCategory("");
+  //   }
 
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [isAdding]);
+  //   document.addEventListener("mousedown", handlePointerDown);
+  //   return () => document.removeEventListener("mousedown", handlePointerDown);
+  // }, [isAdding]);
 
-  function handleStartAdd() {
-    setIsAdding(true);
-    setNewCategory("");
-  }
+  // function handleStartAdd() {
+  //   setIsAdding(true);
+  //   setNewCategory("");
+  // }
 
-  function handleCancelAdd() {
-    setIsAdding(false);
-    setNewCategory("");
-  }
+  // function handleCancelAdd() {
+  //   setIsAdding(false);
+  //   setNewCategory("");
+  // }
 
-  function handleSubmitNewCategory() {
-    const error = onAddCategory(newCategory);
-    if (error) {
-      onAddError?.(error);
-      return;
-    }
+  // function handleSubmitNewCategory() {
+  //   const error = onAddCategory(newCategory);
+  //   if (error) {
+  //     onAddError?.(error);
+  //     return;
+  //   }
 
-    onSelect(newCategory.trim());
-    handleCancelAdd();
-  }
+  //   onSelect(newCategory.trim());
+  //   handleCancelAdd();
+  // }
 
-  function handleInputKeyDown(e) {
-    if (e.key === "Escape") {
-      handleCancelAdd();
-    }
-  }
+  // function handleInputKeyDown(e) {
+  //   if (e.key === "Escape") {
+  //     handleCancelAdd();
+  //   }
+  // }
+  // ---
 
   return (
     <div className="filter-actions">
@@ -82,6 +84,7 @@ function CategoryFilter({
           {category}
         </button>
       ))}
+      {/* --- 새 분야 추가 UI (추후 활성화) ---
       {allowAdd && (
         <div className="filter-add-wrap" ref={addWrapRef}>
           {isAdding ? (
@@ -118,6 +121,7 @@ function CategoryFilter({
           )}
         </div>
       )}
+      --- */}
     </div>
   );
 }
