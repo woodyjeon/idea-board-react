@@ -5,6 +5,7 @@ import { isLocalDataMode } from "../lib/dataMode";
 
 function LoginModal({ isOpen, onClose }) {
   const { login, signup } = useAuth();
+  const signupEnabled = isLocalDataMode();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,10 +31,18 @@ function LoginModal({ isOpen, onClose }) {
       setPassword("");
       setName("");
       setError("");
+      setIsSubmitting(false);
     }
   }, [isOpen]);
 
-  const demoUsers = isLocalDataMode() ? LOCAL_USERS : SUPABASE_DEMO_USERS;
+  useEffect(() => {
+    if (!signupEnabled && mode === "signup") {
+      setMode("login");
+    }
+  }, [signupEnabled, mode]);
+
+  const demoUsers = signupEnabled ? LOCAL_USERS : SUPABASE_DEMO_USERS;
+  const isSignup = signupEnabled && mode === "signup";
 
   if (!isOpen) return null;
 
@@ -43,12 +52,13 @@ function LoginModal({ isOpen, onClose }) {
     setIsSubmitting(true);
 
     try {
-      const message =
-        mode === "login"
-          ? await login(email, password)
-          : await signup({ email, password, name });
+      const message = isSignup
+        ? await signup({ email, password, name })
+        : await login(email, password);
 
       if (message) setError(message);
+    } catch (err) {
+      setError(err?.message || "로그인 처리 중 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
     }
@@ -63,34 +73,36 @@ function LoginModal({ isOpen, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id="auth-dialog-title" className="confirm-dialog-title">
-          {mode === "login" ? "로그인" : "회원가입"}
+          {isSignup ? "회원가입" : "로그인"}
         </h3>
 
-        <div className="auth-tabs">
-          <button
-            type="button"
-            className={`auth-tab ${mode === "login" ? "auth-tab--active" : ""}`}
-            onClick={() => {
-              setMode("login");
-              setError("");
-            }}
-          >
-            로그인
-          </button>
-          <button
-            type="button"
-            className={`auth-tab ${mode === "signup" ? "auth-tab--active" : ""}`}
-            onClick={() => {
-              setMode("signup");
-              setError("");
-            }}
-          >
-            회원가입
-          </button>
-        </div>
+        {signupEnabled && (
+          <div className="auth-tabs">
+            <button
+              type="button"
+              className={`auth-tab ${mode === "login" ? "auth-tab--active" : ""}`}
+              onClick={() => {
+                setMode("login");
+                setError("");
+              }}
+            >
+              로그인
+            </button>
+            <button
+              type="button"
+              className={`auth-tab ${mode === "signup" ? "auth-tab--active" : ""}`}
+              onClick={() => {
+                setMode("signup");
+                setError("");
+              }}
+            >
+              회원가입
+            </button>
+          </div>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          {mode === "signup" && (
+          {isSignup && (
             <>
               <label htmlFor="auth-name">이름</label>
               <input
@@ -120,15 +132,13 @@ function LoginModal({ isOpen, onClose }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={mode === "signup" ? "4자 이상" : "비밀번호"}
-            autoComplete={
-              mode === "signup" ? "new-password" : "current-password"
-            }
+            placeholder={isSignup ? "4자 이상" : "비밀번호"}
+            autoComplete={isSignup ? "new-password" : "current-password"}
           />
 
           {error && <p className="auth-error">{error}</p>}
 
-          {mode === "login" && (
+          {!isSignup && (
             <p className="auth-hint">
               {demoUsers.map((user) => (
                 <span key={user.id}>
@@ -143,9 +153,9 @@ function LoginModal({ isOpen, onClose }) {
             <button type="submit" className="confirm-btn-ok" disabled={isSubmitting}>
               {isSubmitting
                 ? "처리 중..."
-                : mode === "login"
-                  ? "로그인"
-                  : "가입하기"}
+                : isSignup
+                  ? "가입하기"
+                  : "로그인"}
             </button>
           </div>
         </form>

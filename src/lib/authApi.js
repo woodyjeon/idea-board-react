@@ -27,6 +27,9 @@ function toAuthErrorMessage(error) {
   if (message.includes("Password should be at least")) {
     return "비밀번호는 4자 이상 입력해주세요.";
   }
+  if (message.toLowerCase().includes("rate limit")) {
+    return "이메일 발송 한도에 도달했습니다. demo1@example.com / demo2@example.com 계정으로 로그인해 주세요.";
+  }
 
   return message || "인증 처리 중 오류가 발생했습니다.";
 }
@@ -66,18 +69,16 @@ async function getSupabaseCurrentUser() {
 function subscribeToSupabaseAuthChanges(onUserChange) {
   ensureSupabaseConfigured();
 
-  return getSupabase().auth.onAuthStateChange(async (_event, session) => {
+  // async 콜백은 signInWithPassword 등을 deadlock 시킴 — 프로필 조회는 비동기로 분리
+  return getSupabase().auth.onAuthStateChange((_event, session) => {
     if (!session?.user) {
       onUserChange(null);
       return;
     }
 
-    try {
-      const profile = await resolveProfile(session.user);
-      onUserChange(profile);
-    } catch {
-      onUserChange(null);
-    }
+    void resolveProfile(session.user)
+      .then((profile) => onUserChange(profile))
+      .catch(() => onUserChange(null));
   });
 }
 
