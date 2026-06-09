@@ -9,11 +9,18 @@
   --board-columns: 3;
   --card-min-height: 168px;
   --pagination-rows: 3;
+  --font-sans: "Noto Sans KR", sans-serif;
 }
 
 /* 전체 기본 */
+*,
+*::before,
+*::after {
+  font-family: inherit;
+}
+
 body {
-  font-family: sans-serif;
+  font-family: var(--font-sans);
   background: #f5f6f8;
   color: #222;
   margin: 0;
@@ -643,5 +650,80 @@ body {
 
   .card-grid-empty {
     padding: 24px 16px;
+  }
+}
+
+/* 페이지 스크롤 버튼 */
+.scroll-controls {
+  position: fixed;
+  right: 20px;
+  bottom: 104px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.scroll-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: #888;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: color 0.15s, background 0.15s;
+}
+.scroll-btn:hover,
+.scroll-btn:active,
+.scroll-btn:focus-visible {
+  color: white;
+  background: var(--color-primary);
+}
+.scroll-btn:active {
+  background: var(--color-primary-hover);
+}
+
+/* 브랜드 워터마크 */
+.brand-watermark {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.1;
+}
+.brand-watermark img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+@media (max-width: 599px) {
+  .scroll-controls {
+    right: 12px;
+    bottom: 80px;
+  }
+
+  .scroll-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-watermark {
+    right: 12px;
+    bottom: 12px;
+    opacity: 0.08;
+  }
+
+  .brand-watermark img {
+    width: 56px;
+    height: 56px;
   }
 }

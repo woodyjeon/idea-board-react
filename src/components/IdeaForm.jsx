@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import AlertDialog from "./AlertDialog";
 import CategoryFilter from "./CategoryFilter";
 
@@ -16,25 +16,14 @@ function IdeaForm({
   const [alertMessage, setAlertMessage] = useState("");
   const [showSuccessFlash, setShowSuccessFlash] = useState(false);
   const formSectionRef = useRef(null);
-
-  useEffect(() => {
-    if (!editingIdea) return;
-
-    formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [editingIdea]);
-
-  useEffect(() => {
-    if (!showSuccessFlash) return;
-
-    const timer = setTimeout(() => setShowSuccessFlash(false), 1200);
-    return () => clearTimeout(timer);
-  }, [showSuccessFlash]);
+  const titleInputRef = useRef(null);
 
   useEffect(() => {
     if (editingIdea) {
       setTitle(editingIdea.title);
       setCategory(editingIdea.category);
       setDescription(editingIdea.description);
+      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
 
@@ -42,6 +31,24 @@ function IdeaForm({
     setCategory(categories[0] ?? "");
     setDescription("");
   }, [editingIdea, categories]);
+
+  useLayoutEffect(() => {
+    if (!editingIdea || title !== editingIdea.title) return;
+
+    const input = titleInputRef.current;
+    if (!input) return;
+
+    input.focus({ preventScroll: true });
+    const end = input.value.length;
+    input.setSelectionRange(end, end);
+  }, [editingIdea, title]);
+
+  useEffect(() => {
+    if (!showSuccessFlash) return;
+
+    const timer = setTimeout(() => setShowSuccessFlash(false), 1200);
+    return () => clearTimeout(timer);
+  }, [showSuccessFlash]);
 
   useEffect(() => {
     if (!categories.includes(category) && categories.length > 0) {
@@ -102,6 +109,7 @@ function IdeaForm({
 
         <label htmlFor="title">제목</label>
         <input
+          ref={titleInputRef}
           type="text"
           id="title"
           value={title}

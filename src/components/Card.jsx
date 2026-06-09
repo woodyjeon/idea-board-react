@@ -11,7 +11,11 @@ function Card({ idea, isEditing, isFlashing, onEdit, onDelete }) {
       <p className="card-desc">{description}</p>
       {!isEditing && (
         <div className="card-actions">
-          <button type="button" onClick={() => onEdit(idea)}>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onEdit(idea)}
+          >
             수정
           </button>
           <button

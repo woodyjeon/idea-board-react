@@ -6,6 +6,7 @@ import SortBar from "./components/SortBar";
 import CardGrid from "./components/CardGrid";
 import Pagination from "./components/Pagination";
 import ConfirmDialog from "./components/ConfirmDialog";
+import ScrollButtons from "./components/ScrollButtons";
 import { INITIAL_IDEAS } from "./data/initialIdeas";
 import { INITIAL_CATEGORIES } from "./constants/categories";
 import { PAGE_SIZE } from "./constants/pagination";
@@ -179,6 +180,10 @@ function App() {
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
       />
+      <div className="brand-watermark" aria-hidden="true">
+        <img src="/wj_logo.svg" alt="" />
+      </div>
+      <ScrollButtons />
     </>
   );
 }
