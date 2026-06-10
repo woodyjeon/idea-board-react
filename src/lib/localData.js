@@ -1,10 +1,13 @@
+import { getRoadmapCurrentYear } from "../constants/roadmapYears.js";
 import { INITIAL_IDEAS } from "../data/initialIdeas.js";
+import { INITIAL_ROADMAPS } from "../data/initialRoadmaps.js";
 import { LOCAL_USERS } from "../data/users.js";
 
 const STORAGE_KEYS = {
   users: "sparkboard:users:v2",
   session: "sparkboard:session",
   ideas: "sparkboard:ideas",
+  roadmaps: "sparkboard:roadmaps:v4",
 };
 
 const authListeners = new Set();
@@ -179,4 +182,91 @@ export async function deleteIdea(ideaId, authorId) {
   }
 
   writeJson(STORAGE_KEYS.ideas, next);
+}
+
+function normalizeRoadmapItem(item) {
+  return {
+    ...item,
+    year: item.year ?? getRoadmapCurrentYear(),
+  };
+}
+
+function ensureRoadmaps() {
+  const roadmaps = readJson(STORAGE_KEYS.roadmaps, null);
+  if (roadmaps) {
+    return roadmaps.map(normalizeRoadmapItem);
+  }
+
+  const seeded = INITIAL_ROADMAPS.map((item) => ({ ...item }));
+  writeJson(STORAGE_KEYS.roadmaps, seeded);
+  return seeded;
+}
+
+export async function fetchRoadmapsByAuthor(authorId) {
+  return ensureRoadmaps()
+    .filter((item) => item.authorId === authorId)
+    .sort(
+      (a, b) =>
+        a.year - b.year || a.startMonth - b.startMonth || a.id - b.id,
+    );
+}
+
+export async function createRoadmap(
+  authorId,
+  { title, description, year, startMonth, endMonth },
+) {
+  const roadmaps = ensureRoadmaps();
+  const id = Math.max(0, ...roadmaps.map((item) => item.id)) + 1;
+  const created = {
+    id,
+    authorId,
+    year,
+    title,
+    description,
+    startMonth,
+    endMonth,
+  };
+
+  roadmaps.push(created);
+  writeJson(STORAGE_KEYS.roadmaps, roadmaps);
+  return created;
+}
+
+export async function updateRoadmap(
+  roadmapId,
+  { title, description, year, startMonth, endMonth, authorId },
+) {
+  const roadmaps = ensureRoadmaps();
+  const index = roadmaps.findIndex(
+    (item) => item.id === roadmapId && item.authorId === authorId,
+  );
+
+  if (index < 0) {
+    throw new Error("수정할 로드맵 항목을 찾을 수 없습니다.");
+  }
+
+  const updated = {
+    ...roadmaps[index],
+    title,
+    description,
+    year,
+    startMonth,
+    endMonth,
+  };
+  roadmaps[index] = updated;
+  writeJson(STORAGE_KEYS.roadmaps, roadmaps);
+  return updated;
+}
+
+export async function deleteRoadmap(roadmapId, authorId) {
+  const roadmaps = ensureRoadmaps();
+  const next = roadmaps.filter(
+    (item) => !(item.id === roadmapId && item.authorId === authorId),
+  );
+
+  if (next.length === roadmaps.length) {
+    throw new Error("삭제할 로드맵 항목을 찾을 수 없습니다.");
+  }
+
+  writeJson(STORAGE_KEYS.roadmaps, next);
 }

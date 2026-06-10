@@ -8,6 +8,7 @@ import CardGrid from "./components/CardGrid";
 import Pagination from "./components/Pagination";
 import ConfirmDialog from "./components/ConfirmDialog";
 import ScrollButtons from "./components/ScrollButtons";
+import RoadmapPage from "./pages/RoadmapPage";
 import { INITIAL_CATEGORIES } from "./constants/categories";
 import { PAGE_SIZE } from "./constants/pagination";
 import { isIdeaOwner } from "./lib/ideaPermissions";
@@ -18,8 +19,18 @@ import {
   updateIdea,
 } from "./lib/ideasApi";
 
+/** 스크롤 멈춘 뒤 헤더 숨김 */
+const HEADER_HIDE_DELAY_MS = 2000;
+/** 헤더/상단 영역에서 마우스가 나간 뒤 숨김 */
+const HEADER_MOUSE_LEAVE_DELAY_MS = 500;
+/** 상단 호버로 헤더를 다시 열 때 짧은 유예 (지나가는 커서 무시) */
+const HEADER_HOVER_SHOW_DELAY_MS = 150;
+const HEADER_TOP_THRESHOLD = 64;
+const HEADER_HOVER_ZONE = 28;
+
 function App() {
   const { user, isLoggedIn, isLoading: isAuthLoading, openLogin } = useAuth();
+  const [activePage, setActivePage] = useState("board");
   const [ideas, setIdeas] = useState([]);
   const [ideasLoading, setIdeasLoading] = useState(false);
   const [ideasError, setIdeasError] = useState("");
@@ -34,8 +45,175 @@ function App() {
   const paginationRef = useRef(null);
   const preservePaginationScrollRef = useRef(false);
   const paginationScrollYRef = useRef(null);
+  const headerHideTimerRef = useRef(null);
+  const headerShowTimerRef = useRef(null);
+  const pointerInHeaderAreaRef = useRef(false);
+  const isHeaderHiddenRef = useRef(false);
+  const formPanelActiveRef = useRef(false);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const [roadmapFormActive, setRoadmapFormActive] = useState(false);
+
+  useEffect(() => {
+    isHeaderHiddenRef.current = isHeaderHidden;
+  }, [isHeaderHidden]);
 
   const deleteTarget = ideas.find((idea) => idea.id === deleteTargetId);
+
+  function setFormPanelActive(active) {
+    formPanelActiveRef.current = active;
+
+    if (active) {
+      clearTimeout(headerHideTimerRef.current);
+      clearTimeout(headerShowTimerRef.current);
+      setIsHeaderHidden(true);
+      return;
+    }
+
+    if (window.scrollY <= HEADER_TOP_THRESHOLD) {
+      setIsHeaderHidden(false);
+    }
+  }
+
+  useEffect(() => {
+    setFormPanelActive(Boolean(viewingIdea || editingIdea || roadmapFormActive));
+  }, [viewingIdea, editingIdea, roadmapFormActive]);
+
+  function showHeader() {
+    if (formPanelActiveRef.current) return;
+
+    clearTimeout(headerShowTimerRef.current);
+    setIsHeaderHidden(false);
+  }
+
+  function revealHeaderOnHover() {
+    clearTimeout(headerHideTimerRef.current);
+    clearTimeout(headerShowTimerRef.current);
+
+    if (!isHeaderHiddenRef.current) {
+      setIsHeaderHidden(false);
+      return;
+    }
+
+    headerShowTimerRef.current = setTimeout(() => {
+      setIsHeaderHidden(false);
+    }, HEADER_HOVER_SHOW_DELAY_MS);
+  }
+
+  function scheduleHeaderHideOnLeave() {
+    clearTimeout(headerHideTimerRef.current);
+
+    if (formPanelActiveRef.current) {
+      setIsHeaderHidden(true);
+      return;
+    }
+
+    if (window.scrollY <= HEADER_TOP_THRESHOLD) {
+      setIsHeaderHidden(false);
+      return;
+    }
+
+    headerHideTimerRef.current = setTimeout(() => {
+      setIsHeaderHidden(true);
+    }, HEADER_MOUSE_LEAVE_DELAY_MS);
+  }
+
+  function scheduleHeaderHide() {
+    clearTimeout(headerHideTimerRef.current);
+
+    if (formPanelActiveRef.current) {
+      setIsHeaderHidden(true);
+      return;
+    }
+
+    if (window.scrollY <= HEADER_TOP_THRESHOLD) {
+      setIsHeaderHidden(false);
+      return;
+    }
+
+    headerHideTimerRef.current = setTimeout(() => {
+      setIsHeaderHidden(true);
+    }, HEADER_HIDE_DELAY_MS);
+  }
+
+  function handleHeaderHoverEnter() {
+    pointerInHeaderAreaRef.current = true;
+    revealHeaderOnHover();
+  }
+
+  function handleHeaderHoverLeave(event) {
+    const nextTarget = event?.relatedTarget;
+    const headerEl = document.getElementById("app-header");
+
+    if (nextTarget instanceof Node) {
+      if (headerEl?.contains(nextTarget)) return;
+      if (nextTarget.closest?.(".header-reveal-zone")) return;
+    }
+
+    clearTimeout(headerShowTimerRef.current);
+    pointerInHeaderAreaRef.current = false;
+    scheduleHeaderHideOnLeave();
+  }
+
+  useEffect(() => {
+    function handleScroll() {
+      if (!formPanelActiveRef.current) {
+        showHeader();
+      }
+      scheduleHeaderHide();
+    }
+
+    function handleMouseMove(event) {
+      if (window.scrollY <= HEADER_TOP_THRESHOLD) {
+        if (
+          formPanelActiveRef.current &&
+          event.clientY > HEADER_HOVER_ZONE
+        ) {
+          return;
+        }
+
+        pointerInHeaderAreaRef.current = true;
+        clearTimeout(headerHideTimerRef.current);
+        setIsHeaderHidden(false);
+        return;
+      }
+
+      const headerEl = document.getElementById("app-header");
+      const inTopHoverZone = event.clientY <= HEADER_HOVER_ZONE;
+      let overHeader = false;
+
+      if (headerEl) {
+        const rect = headerEl.getBoundingClientRect();
+        overHeader =
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom &&
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right;
+      }
+
+      const inHeaderArea = inTopHoverZone || overHeader;
+
+      if (inHeaderArea) {
+        pointerInHeaderAreaRef.current = true;
+        revealHeaderOnHover();
+        return;
+      }
+
+      if (pointerInHeaderAreaRef.current) {
+        clearTimeout(headerShowTimerRef.current);
+        pointerInHeaderAreaRef.current = false;
+        scheduleHeaderHideOnLeave();
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("mousemove", handleMouseMove);
+      clearTimeout(headerHideTimerRef.current);
+      clearTimeout(headerShowTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!flashCardId) return;
@@ -206,6 +384,14 @@ function App() {
     }
   }
 
+  function scrollToHeader() {
+    showHeader();
+    clearTimeout(headerHideTimerRef.current);
+    document
+      .getElementById("app-header")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function handleViewIdea(idea) {
     if (!user?.id || !isIdeaOwner(idea, user.id)) return;
 
@@ -269,6 +455,24 @@ function App() {
     setDeleteTargetId(null);
   }
 
+  function handleNavPageChange(page) {
+    if (page === "board") {
+      setViewingIdea(null);
+      setEditingIdea(null);
+    }
+    setActivePage(page);
+  }
+
+  function handleGoHome() {
+    setActivePage("board");
+    setViewingIdea(null);
+    setEditingIdea(null);
+    setCategoryFilter("all");
+    setSortOrder(null);
+    setCurrentPage(1);
+    scrollToHeader();
+  }
+
   const cardEmptyMessage = ideasError
     ? ideasError
     : isAuthLoading || ideasLoading
@@ -278,66 +482,100 @@ function App() {
         : "로그인 후 본인의 아이디어를 확인할 수 있습니다.";
 
   return (
-    <>
-      <Header />
-      <main>
-        <div className="board-content">
-          <IdeaForm
-            categories={categories}
-            isLoggedIn={isLoggedIn}
-            onLoginRequest={openLogin}
-            onAdd={handleAddIdea}
-            viewingIdea={viewingIdea}
-            editingIdea={editingIdea}
-            onUpdate={handleUpdateIdea}
-            onCancelView={() => setViewingIdea(null)}
-            onCancelEdit={() => setEditingIdea(null)}
-          />
-          <SortBar
-            categories={categories}
-            sortOrder={sortOrder}
-            onSortChange={setSortOrder}
-            categoryFilter={categoryFilter}
-            onCategoryFilterChange={setCategoryFilter}
-          />
-          <div
-            className={`card-board ${totalPages > 1 ? "card-board--paged" : ""}`}
-          >
-            <CardGrid
-              ideas={paginatedIdeas}
-              currentUserId={user?.id ?? null}
-              emptyMessage={cardEmptyMessage}
-              isLoading={isAuthLoading || ideasLoading}
-              viewingId={viewingIdea?.id ?? null}
-              editingId={editingIdea?.id ?? null}
-              flashCardId={flashCardId}
-              onView={handleViewIdea}
-              onEdit={handleEditIdea}
-              onDelete={handleDeleteRequest}
+    <div className="app-shell">
+      {isHeaderHidden && (
+        <div
+          className="header-reveal-zone"
+          aria-hidden="true"
+          onMouseEnter={handleHeaderHoverEnter}
+          onMouseLeave={handleHeaderHoverLeave}
+        />
+      )}
+      <Header
+        activePage={activePage}
+        isHidden={isHeaderHidden}
+        onPageChange={handleNavPageChange}
+        onHomeClick={handleGoHome}
+        onHoverAreaEnter={handleHeaderHoverEnter}
+        onHoverAreaLeave={handleHeaderHoverLeave}
+      />
+      <div className="app-main">
+        <main
+          className="board-page"
+          hidden={activePage !== "board"}
+          aria-hidden={activePage !== "board"}
+        >
+          <div className="board-content">
+            <IdeaForm
+              categories={categories}
+              isLoggedIn={isLoggedIn}
+              onLoginRequest={openLogin}
+              onAdd={handleAddIdea}
+              viewingIdea={viewingIdea}
+              editingIdea={editingIdea}
+              onUpdate={handleUpdateIdea}
+              onCancelView={() => setViewingIdea(null)}
+              onCancelEdit={() => setEditingIdea(null)}
             />
-            <div ref={paginationRef} className="pagination-anchor">
-              <Pagination
-                page={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
+            <SortBar
+              categories={categories}
+              sortOrder={sortOrder}
+              onSortChange={setSortOrder}
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={setCategoryFilter}
+            />
+            <div
+              className={`card-board ${totalPages > 1 ? "card-board--paged" : ""}`}
+            >
+              <CardGrid
+                ideas={paginatedIdeas}
+                currentUserId={user?.id ?? null}
+                emptyMessage={cardEmptyMessage}
+                isLoading={isAuthLoading || ideasLoading}
+                viewingId={viewingIdea?.id ?? null}
+                editingId={editingIdea?.id ?? null}
+                flashCardId={flashCardId}
+                onView={handleViewIdea}
+                onEdit={handleEditIdea}
+                onDelete={handleDeleteRequest}
               />
+              <div ref={paginationRef} className="pagination-anchor">
+                <Pagination
+                  page={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
             </div>
           </div>
+        </main>
+        <div
+          hidden={activePage !== "roadmap"}
+          aria-hidden={activePage !== "roadmap"}
+        >
+          <RoadmapPage
+            isActive={activePage === "roadmap"}
+            onFormActiveChange={setRoadmapFormActive}
+          />
         </div>
-      </main>
-      <ConfirmDialog
-        isOpen={Boolean(deleteTarget)}
-        title="아이디어 삭제"
-        message={`"${deleteTarget?.title}"을(를) 삭제할까요?`}
-        subMessage="이 작업은 되돌릴 수 없습니다."
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-      />
+        {activePage === "board" && (
+          <>
+            <ConfirmDialog
+              isOpen={Boolean(deleteTarget)}
+              title="아이디어 삭제"
+              message={`"${deleteTarget?.title}"을(를) 삭제할까요?`}
+              subMessage="이 작업은 되돌릴 수 없습니다."
+              onConfirm={handleConfirmDelete}
+              onCancel={handleCancelDelete}
+            />
+            <ScrollButtons />
+          </>
+        )}
       <div className="brand-watermark" aria-hidden="true">
         <img src="/wj_logo.svg" alt="" />
       </div>
-      <ScrollButtons />
-    </>
+      </div>
+    </div>
   );
 }
 

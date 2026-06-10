@@ -30,8 +30,6 @@ function IdeaForm({
 
   useEffect(() => {
     if (isReadMode) {
-      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-
       if (prevViewingIdRef.current !== viewingIdea.id) {
         setShowViewFlash(true);
       }
@@ -45,7 +43,6 @@ function IdeaForm({
       setTitle(editingIdea.title);
       setCategory(editingIdea.category);
       setDescription(editingIdea.description);
-      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
       if (prevEditingIdRef.current !== editingIdea.id) {
         setShowEditFlash(true);
@@ -61,15 +58,27 @@ function IdeaForm({
   }, [viewingIdea, editingIdea, categories, isReadMode]);
 
   useLayoutEffect(() => {
-    if (!editingIdea || title !== editingIdea.title) return;
+    if (!viewingIdea && !editingIdea) return;
 
-    const input = titleInputRef.current;
-    if (!input) return;
+    const section = formSectionRef.current;
+    if (!section) return;
 
-    input.focus({ preventScroll: true });
-    const end = input.value.length;
-    input.setSelectionRange(end, end);
-  }, [editingIdea, title]);
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    window.requestAnimationFrame(() => {
+      if (editingIdea && titleInputRef.current && title === editingIdea.title) {
+        const input = titleInputRef.current;
+        input.focus({ preventScroll: true });
+        const end = input.value.length;
+        input.setSelectionRange(end, end);
+        return;
+      }
+
+      if (viewingIdea && !editingIdea) {
+        section.focus({ preventScroll: true });
+      }
+    });
+  }, [viewingIdea, editingIdea, title]);
 
   useEffect(() => {
     if (!showSuccessFlash) return;
@@ -151,7 +160,13 @@ function IdeaForm({
 
   if (isReadMode) {
     return (
-      <section className="form-section" ref={formSectionRef}>
+      <section
+        ref={formSectionRef}
+        id="idea-form-panel"
+        className="form-section"
+        tabIndex={-1}
+        aria-label="아이디어 상세"
+      >
         <div
           className={`idea-form idea-form--reading ${showViewFlash ? "idea-form--success" : ""}`}
         >
@@ -186,7 +201,13 @@ function IdeaForm({
   }
 
   return (
-    <section className="form-section" ref={formSectionRef}>
+    <section
+      ref={formSectionRef}
+      id="idea-form-panel"
+      className="form-section"
+      tabIndex={-1}
+      aria-label={editingIdea ? "아이디어 수정" : "새 아이디어 등록"}
+    >
       <form
         className={`idea-form ${editingIdea ? "idea-form--editing" : ""} ${showSuccessFlash || showEditFlash ? "idea-form--success" : ""}`}
         onSubmit={handleSubmit}

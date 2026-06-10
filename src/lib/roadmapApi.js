@@ -1,0 +1,179 @@
+import { isLocalDataMode } from "./dataMode";
+import * as localData from "./localData";
+import { mapRoadmapFromDb } from "./mappers";
+import * as roadmapFallback from "./roadmapFallback";
+import { getSupabase, isSupabaseConfigured } from "./supabase";
+
+const ROADMAP_COLUMNS =
+  "id, author_id, year, title, description, start_month, end_month";
+
+let supabaseRoadmapFallback = false;
+
+export function isRoadmapFallbackMode() {
+  return supabaseRoadmapFallback;
+}
+
+function ensureSupabaseConfigured() {
+  if (!isSupabaseConfigured()) {
+    throw new Error(
+      "Supabase가 설정되지 않았습니다. .env 파일을 확인하거나 VITE_DATA_MODE=local 을 사용하세요.",
+    );
+  }
+}
+
+function isRoadmapTableMissing(error) {
+  const message = (error?.message ?? "").toLowerCase();
+  const code = error?.code ?? "";
+
+  return (
+    code === "PGRST205" ||
+    code === "42P01" ||
+    message.includes("schema cache") ||
+    message.includes("could not find the table") ||
+    (message.includes("roadmaps") && message.includes("does not exist"))
+  );
+}
+
+function enableSupabaseFallback(reason) {
+  if (!supabaseRoadmapFallback) {
+    console.warn(
+      `[roadmap] Supabase roadmaps 테이블 없음 — 더미 데이터로 표시합니다. (${reason})`,
+    );
+  }
+  supabaseRoadmapFallback = true;
+}
+
+function toDbErrorMessage(error) {
+  return error?.message || "로드맵 처리 중 오류가 발생했습니다.";
+}
+
+function buildRoadmapWritePayload(authorId, data) {
+  return {
+    author_id: authorId,
+    year: data.year,
+    title: data.title,
+    description: data.description,
+    start_month: data.startMonth,
+    end_month: data.endMonth,
+  };
+}
+
+async function fetchSupabaseRoadmapsByAuthor(authorId) {
+  if (supabaseRoadmapFallback) {
+    return roadmapFallback.fetchFallbackRoadmaps(authorId);
+  }
+
+  ensureSupabaseConfigured();
+
+  const { data, error } = await getSupabase()
+    .from("roadmaps")
+    .select(ROADMAP_COLUMNS)
+    .eq("author_id", authorId)
+    .order("start_month", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    if (isRoadmapTableMissing(error)) {
+      enableSupabaseFallback(error.message);
+      return roadmapFallback.fetchFallbackRoadmaps(authorId);
+    }
+    throw new Error(toDbErrorMessage(error));
+  }
+
+  return (data ?? []).map(mapRoadmapFromDb);
+}
+
+async function createSupabaseRoadmap(authorId, payload) {
+  if (supabaseRoadmapFallback) {
+    return roadmapFallback.createFallbackRoadmap(authorId, payload);
+  }
+
+  ensureSupabaseConfigured();
+
+  const { data, error } = await getSupabase()
+    .from("roadmaps")
+    .insert(buildRoadmapWritePayload(authorId, payload))
+    .select(ROADMAP_COLUMNS)
+    .single();
+
+  if (error) {
+    if (isRoadmapTableMissing(error)) {
+      enableSupabaseFallback(error.message);
+      return roadmapFallback.createFallbackRoadmap(authorId, payload);
+    }
+    throw new Error(toDbErrorMessage(error));
+  }
+
+  return mapRoadmapFromDb(data);
+}
+
+async function updateSupabaseRoadmap(roadmapId, payload) {
+  if (supabaseRoadmapFallback) {
+    return roadmapFallback.updateFallbackRoadmap(roadmapId, payload);
+  }
+
+  ensureSupabaseConfigured();
+
+  const updatePayload = buildRoadmapWritePayload(payload.authorId, payload);
+  delete updatePayload.author_id;
+
+  const { data, error } = await getSupabase()
+    .from("roadmaps")
+    .update(updatePayload)
+    .eq("id", roadmapId)
+    .eq("author_id", payload.authorId)
+    .select(ROADMAP_COLUMNS)
+    .single();
+
+  if (error) {
+    if (isRoadmapTableMissing(error)) {
+      enableSupabaseFallback(error.message);
+      return roadmapFallback.updateFallbackRoadmap(roadmapId, payload);
+    }
+    throw new Error(toDbErrorMessage(error));
+  }
+
+  return mapRoadmapFromDb(data);
+}
+
+async function deleteSupabaseRoadmap(roadmapId, authorId) {
+  if (supabaseRoadmapFallback) {
+    return roadmapFallback.deleteFallbackRoadmap(roadmapId, authorId);
+  }
+
+  ensureSupabaseConfigured();
+
+  const { error } = await getSupabase()
+    .from("roadmaps")
+    .delete()
+    .eq("id", roadmapId)
+    .eq("author_id", authorId);
+
+  if (error) {
+    if (isRoadmapTableMissing(error)) {
+      enableSupabaseFallback(error.message);
+      return roadmapFallback.deleteFallbackRoadmap(roadmapId, authorId);
+    }
+    throw new Error(toDbErrorMessage(error));
+  }
+}
+
+export async function fetchRoadmapsByAuthor(authorId) {
+  if (isLocalDataMode()) return localData.fetchRoadmapsByAuthor(authorId);
+  return fetchSupabaseRoadmapsByAuthor(authorId);
+}
+
+export async function createRoadmap(authorId, payload) {
+  if (isLocalDataMode()) return localData.createRoadmap(authorId, payload);
+  return createSupabaseRoadmap(authorId, payload);
+}
+
+export async function updateRoadmap(roadmapId, payload) {
+  if (isLocalDataMode()) return localData.updateRoadmap(roadmapId, payload);
+  return updateSupabaseRoadmap(roadmapId, payload);
+}
+
+export async function deleteRoadmap(roadmapId, authorId) {
+  if (isLocalDataMode()) return localData.deleteRoadmap(roadmapId, authorId);
+  return deleteSupabaseRoadmap(roadmapId, authorId);
+}

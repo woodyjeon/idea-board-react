@@ -1,44 +1,97 @@
-import sparkLogo from "../assets/spark-board-logo.svg";
+import { LayoutGrid, Map } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { isLocalDataMode } from "../lib/dataMode";
 
-function Header() {
+/** @typedef {'board' | 'roadmap'} AppPage */
+
+function Header({
+  activePage,
+  isHidden = false,
+  onPageChange,
+  onHomeClick,
+  onHoverAreaEnter,
+  onHoverAreaLeave,
+}) {
   const { user, isLoggedIn, openLogin, logout } = useAuth();
   const isLocal = isLocalDataMode();
 
   return (
-    <header className="board-header">
-      <div className="board-header-row">
-        <div className="board-header-brand">
-          <img
-            src={sparkLogo}
-            alt=""
-            className="board-header-logo"
-            aria-hidden="true"
-          />
-          <h1>아이디어 스파크보드</h1>
+    <header
+      id="app-header"
+      className={`app-header ${isHidden ? "app-header--hidden" : ""}`}
+      onMouseEnter={onHoverAreaEnter}
+      onMouseLeave={onHoverAreaLeave}
+    >
+      <div className="app-topbar">
+        <div className="app-topbar-left">
+          <button
+            type="button"
+            className="app-brand"
+            onClick={onHomeClick}
+            aria-label="처음으로"
+          >
+            <img
+              src="/wj_logo.svg"
+              alt=""
+              className="app-brand-logo"
+              aria-hidden="true"
+            />
+            <span className="app-brand-name">아이디어 스파크보드</span>
+          </button>
           {isLocal && (
-            <span className="data-mode-badge" title="localStorage 모드">
-              로컬
+            <span className="app-env-badge" title="localStorage 모드">
+              LOCAL
             </span>
           )}
         </div>
-        <div className="board-header-auth">
+
+        <div className="app-topbar-right">
           {isLoggedIn ? (
             <>
-              <span className="auth-user-name">{user.name}님</span>
-              <button type="button" className="auth-btn" onClick={logout}>
+              <span className="app-user-chip">{user.name}</span>
+              <button type="button" className="app-topbar-btn" onClick={logout}>
                 로그아웃
               </button>
             </>
           ) : (
-            <button type="button" className="auth-btn auth-btn--primary" onClick={openLogin}>
+            <button
+              type="button"
+              className="app-topbar-btn app-topbar-btn--primary"
+              onClick={openLogin}
+            >
               로그인
             </button>
           )}
         </div>
       </div>
-      <p>떠오른 연구 아이디어를 기록하고, 분야별로 탐색해 보세요</p>
+
+      <div className="app-project-bar">
+        <div className="app-project-meta">
+          <span className="app-project-key">IDEA</span>
+          <span className="app-project-title">연구 아이디어 프로젝트</span>
+        </div>
+
+        <nav className="app-tabs" aria-label="프로젝트 보기">
+          <button
+            type="button"
+            className={`app-tab ${activePage === "board" ? "app-tab--active" : ""}`}
+            aria-current={activePage === "board" ? "page" : undefined}
+            onClick={() => onPageChange("board")}
+          >
+            <LayoutGrid size={16} strokeWidth={2} aria-hidden="true" />
+            보드
+          </button>
+          <button
+            type="button"
+            className={`app-tab ${activePage === "roadmap" ? "app-tab--active" : ""}`}
+            aria-current={activePage === "roadmap" ? "page" : undefined}
+            onClick={() => onPageChange("roadmap")}
+          >
+            <Map size={16} strokeWidth={2} aria-hidden="true" />
+            로드맵
+          </button>
+        </nav>
+      </div>
     </header>
   );
 }

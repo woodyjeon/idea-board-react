@@ -21,7 +21,7 @@ function ScrollButtons() {
         aria-label="맨 위로"
         title="맨 위로"
       >
-        <ChevronUp size={18} strokeWidth={2.5} />
+        <ChevronUp size={16} strokeWidth={2} aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -30,7 +30,7 @@ function ScrollButtons() {
         aria-label="맨 아래로"
         title="맨 아래로"
       >
-        <ChevronDown size={18} strokeWidth={2.5} />
+        <ChevronDown size={16} strokeWidth={2} aria-hidden="true" />
       </button>
     </div>
   );
