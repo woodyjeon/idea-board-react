@@ -1,27 +1,40 @@
+import { useLayoutEffect, useRef } from "react";
 import { LayoutGrid, Map } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { isLocalDataMode } from "../lib/dataMode";
 
 /** @typedef {'board' | 'roadmap'} AppPage */
 
-function Header({
-  activePage,
-  isHidden = false,
-  onPageChange,
-  onHomeClick,
-  onHoverAreaEnter,
-  onHoverAreaLeave,
-}) {
+function Header({ activePage, onPageChange, onHomeClick }) {
   const { user, isLoggedIn, openLogin, logout } = useAuth();
   const isLocal = isLocalDataMode();
+  const headerRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) return undefined;
+
+    function syncHeaderHeight() {
+      document.documentElement.style.setProperty(
+        "--app-header-height",
+        `${header.offsetHeight}px`,
+      );
+    }
+
+    syncHeaderHeight();
+
+    const observer = new ResizeObserver(syncHeaderHeight);
+    observer.observe(header);
+    window.addEventListener("resize", syncHeaderHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncHeaderHeight);
+    };
+  }, [isLoggedIn, activePage, user?.name, isLocal]);
 
   return (
-    <header
-      id="app-header"
-      className={`app-header ${isHidden ? "app-header--hidden" : ""}`}
-      onMouseEnter={onHoverAreaEnter}
-      onMouseLeave={onHoverAreaLeave}
-    >
+    <header ref={headerRef} id="app-header" className="app-header">
       <div className="app-topbar">
         <div className="app-topbar-left">
           <button

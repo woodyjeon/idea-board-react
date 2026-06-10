@@ -1,23 +1,23 @@
 import { useCallback, useEffect, useRef } from "react";
-import {
-  ROADMAP_MONTHS_PER_YEAR,
-  ROADMAP_MULTI_YEAR_MONTH_WIDTH,
-} from "../constants/roadmapMonths";
 
 const DRAG_CLICK_THRESHOLD = 4;
 const OVERSCROLL_YEAR_THRESHOLD = 56;
 const SWIPE_YEAR_THRESHOLD = 72;
 
-function getSidebarWidth() {
-  if (typeof document === "undefined") return 300;
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(
+function getSidebarWidth(scrollEl) {
+  const root = scrollEl?.closest(".gantt-chart-root");
+  const raw = getComputedStyle(root ?? scrollEl ?? document.documentElement).getPropertyValue(
     "--roadmap-sidebar-width",
   );
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) ? parsed : 300;
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function useGanttDragNavigation({ centerYear, onShiftYear }) {
+export function useGanttDragNavigation({
+  centerYear,
+  viewYearCount,
+  onShiftYear,
+}) {
   const scrollRef = useRef(null);
   const dragRef = useRef({
     active: false,
@@ -32,18 +32,47 @@ export function useGanttDragNavigation({ centerYear, onShiftYear }) {
     const el = scrollRef.current;
     if (!el) return;
 
-    const sidebarWidth = getSidebarWidth();
-    const yearWidth = ROADMAP_MONTHS_PER_YEAR * ROADMAP_MULTI_YEAR_MONTH_WIDTH;
-    const centerStart = sidebarWidth + yearWidth;
+    const sidebarWidth = getSidebarWidth(el);
+
+    if (viewYearCount <= 1) {
+      el.scrollLeft = 0;
+      return;
+    }
+
+    const totalTimelineWidth = Math.max(el.scrollWidth - sidebarWidth, 1);
+    const yearWidth = totalTimelineWidth / viewYearCount;
+    const centerIndex = Math.floor(viewYearCount / 2);
+    const centerStart = sidebarWidth + centerIndex * yearWidth;
     const visibleTimeline = Math.max(el.clientWidth - sidebarWidth, yearWidth);
     const target = centerStart - (visibleTimeline - yearWidth) / 2;
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
 
-    el.scrollLeft = Math.max(0, target);
-  }, []);
+    el.scrollLeft = Math.max(0, Math.min(target, maxScroll));
+  }, [viewYearCount]);
 
   useEffect(() => {
-    scrollToCenterYear();
-  }, [centerYear, scrollToCenterYear]);
+    const el = scrollRef.current;
+    if (!el) return undefined;
+
+    let frameId = 0;
+
+    function scheduleScroll() {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => {
+        scrollToCenterYear();
+      });
+    }
+
+    scheduleScroll();
+
+    const observer = new ResizeObserver(scheduleScroll);
+    observer.observe(el);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      observer.disconnect();
+    };
+  }, [centerYear, viewYearCount, scrollToCenterYear]);
 
   const finishDrag = useCallback(
     (event) => {
@@ -82,7 +111,8 @@ export function useGanttDragNavigation({ centerYear, onShiftYear }) {
 
   const handlePointerDown = useCallback((event) => {
     if (event.button !== 0) return;
-    if (event.target.closest("button, a, input, select, textarea")) return;
+    if (event.pointerType === "touch") return;
+    if (event.target.closest("button, a, input, select, textarea, .gantt-bar")) return;
 
     const el = scrollRef.current;
     if (!el) return;

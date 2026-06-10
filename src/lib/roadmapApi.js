@@ -1,13 +1,22 @@
 import { isLocalDataMode } from "./dataMode";
 import * as localData from "./localData";
 import { mapRoadmapFromDb } from "./mappers";
-import * as roadmapFallback from "./roadmapFallback";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
 
 const ROADMAP_COLUMNS =
   "id, author_id, year, title, description, start_month, end_month";
 
-let supabaseRoadmapFallback = false;
+const ROADMAP_FALLBACK_STORAGE_KEY = "sparkboard:roadmaps:supabase-unavailable";
+
+function readRoadmapFallbackFlag() {
+  try {
+    return localStorage.getItem(ROADMAP_FALLBACK_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+let supabaseRoadmapFallback = readRoadmapFallbackFlag();
 
 export function isRoadmapFallbackMode() {
   return supabaseRoadmapFallback;
@@ -34,13 +43,19 @@ function isRoadmapTableMissing(error) {
   );
 }
 
-function enableSupabaseFallback(reason) {
-  if (!supabaseRoadmapFallback) {
-    console.warn(
-      `[roadmap] Supabase roadmaps 테이블 없음 — 더미 데이터로 표시합니다. (${reason})`,
-    );
-  }
+function enableSupabaseFallback() {
+  if (supabaseRoadmapFallback) return;
+
   supabaseRoadmapFallback = true;
+  try {
+    localStorage.setItem(ROADMAP_FALLBACK_STORAGE_KEY, "1");
+  } catch {
+    // localStorage unavailable — in-memory flag still applies this session
+  }
+}
+
+function fetchLocalRoadmaps(authorId) {
+  return localData.fetchRoadmapsByAuthor(authorId);
 }
 
 function toDbErrorMessage(error) {
@@ -60,7 +75,7 @@ function buildRoadmapWritePayload(authorId, data) {
 
 async function fetchSupabaseRoadmapsByAuthor(authorId) {
   if (supabaseRoadmapFallback) {
-    return roadmapFallback.fetchFallbackRoadmaps(authorId);
+    return fetchLocalRoadmaps(authorId);
   }
 
   ensureSupabaseConfigured();
@@ -74,8 +89,8 @@ async function fetchSupabaseRoadmapsByAuthor(authorId) {
 
   if (error) {
     if (isRoadmapTableMissing(error)) {
-      enableSupabaseFallback(error.message);
-      return roadmapFallback.fetchFallbackRoadmaps(authorId);
+      enableSupabaseFallback();
+      return fetchLocalRoadmaps(authorId);
     }
     throw new Error(toDbErrorMessage(error));
   }
@@ -85,7 +100,7 @@ async function fetchSupabaseRoadmapsByAuthor(authorId) {
 
 async function createSupabaseRoadmap(authorId, payload) {
   if (supabaseRoadmapFallback) {
-    return roadmapFallback.createFallbackRoadmap(authorId, payload);
+    return localData.createRoadmap(authorId, payload);
   }
 
   ensureSupabaseConfigured();
@@ -98,8 +113,8 @@ async function createSupabaseRoadmap(authorId, payload) {
 
   if (error) {
     if (isRoadmapTableMissing(error)) {
-      enableSupabaseFallback(error.message);
-      return roadmapFallback.createFallbackRoadmap(authorId, payload);
+      enableSupabaseFallback();
+      return localData.createRoadmap(authorId, payload);
     }
     throw new Error(toDbErrorMessage(error));
   }
@@ -109,7 +124,7 @@ async function createSupabaseRoadmap(authorId, payload) {
 
 async function updateSupabaseRoadmap(roadmapId, payload) {
   if (supabaseRoadmapFallback) {
-    return roadmapFallback.updateFallbackRoadmap(roadmapId, payload);
+    return localData.updateRoadmap(roadmapId, payload);
   }
 
   ensureSupabaseConfigured();
@@ -127,8 +142,8 @@ async function updateSupabaseRoadmap(roadmapId, payload) {
 
   if (error) {
     if (isRoadmapTableMissing(error)) {
-      enableSupabaseFallback(error.message);
-      return roadmapFallback.updateFallbackRoadmap(roadmapId, payload);
+      enableSupabaseFallback();
+      return localData.updateRoadmap(roadmapId, payload);
     }
     throw new Error(toDbErrorMessage(error));
   }
@@ -138,7 +153,7 @@ async function updateSupabaseRoadmap(roadmapId, payload) {
 
 async function deleteSupabaseRoadmap(roadmapId, authorId) {
   if (supabaseRoadmapFallback) {
-    return roadmapFallback.deleteFallbackRoadmap(roadmapId, authorId);
+    return localData.deleteRoadmap(roadmapId, authorId);
   }
 
   ensureSupabaseConfigured();
@@ -151,8 +166,8 @@ async function deleteSupabaseRoadmap(roadmapId, authorId) {
 
   if (error) {
     if (isRoadmapTableMissing(error)) {
-      enableSupabaseFallback(error.message);
-      return roadmapFallback.deleteFallbackRoadmap(roadmapId, authorId);
+      enableSupabaseFallback();
+      return localData.deleteRoadmap(roadmapId, authorId);
     }
     throw new Error(toDbErrorMessage(error));
   }

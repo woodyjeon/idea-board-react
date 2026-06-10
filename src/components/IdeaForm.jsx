@@ -4,102 +4,53 @@ import CategoryFilter from "./CategoryFilter";
 
 function IdeaForm({
   categories,
-  isLoggedIn,
-  onLoginRequest,
-  onAdd,
-  // onAddCategory, // TODO: 새 분야 추가
   viewingIdea,
   editingIdea,
+  onAdd,
   onUpdate,
   onCancelView,
   onCancelEdit,
 }) {
+  const isNew = editingIdea === "new";
+  const isEditMode = editingIdea && editingIdea !== "new";
+  const isReadMode = viewingIdea && !editingIdea;
+  const isOpen = isNew || isEditMode || isReadMode;
+
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState(categories[0] ?? "");
   const [description, setDescription] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
-  const [showSuccessFlash, setShowSuccessFlash] = useState(false);
-  const [showEditFlash, setShowEditFlash] = useState(false);
-  const [showViewFlash, setShowViewFlash] = useState(false);
-  const formSectionRef = useRef(null);
+  const panelRef = useRef(null);
   const titleInputRef = useRef(null);
-  const prevEditingIdRef = useRef(null);
-  const prevViewingIdRef = useRef(null);
-
-  const isReadMode = viewingIdea && !editingIdea;
 
   useEffect(() => {
-    if (isReadMode) {
-      if (prevViewingIdRef.current !== viewingIdea.id) {
-        setShowViewFlash(true);
-      }
-      prevViewingIdRef.current = viewingIdea.id;
+    if (isNew) {
+      setTitle("");
+      setCategory(categories[0] ?? "");
+      setDescription("");
       return;
     }
 
-    prevViewingIdRef.current = null;
-
-    if (editingIdea) {
+    if (isEditMode) {
       setTitle(editingIdea.title);
       setCategory(editingIdea.category);
       setDescription(editingIdea.description);
-
-      if (prevEditingIdRef.current !== editingIdea.id) {
-        setShowEditFlash(true);
-      }
-      prevEditingIdRef.current = editingIdea.id;
-      return;
     }
-
-    prevEditingIdRef.current = null;
-    setTitle("");
-    setCategory(categories[0] ?? "");
-    setDescription("");
-  }, [viewingIdea, editingIdea, categories, isReadMode]);
+  }, [editingIdea, isNew, isEditMode, categories]);
 
   useLayoutEffect(() => {
-    if (!viewingIdea && !editingIdea) return;
+    if (!isOpen) return;
 
-    const section = formSectionRef.current;
-    if (!section) return;
-
-    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
     window.requestAnimationFrame(() => {
-      if (editingIdea && titleInputRef.current && title === editingIdea.title) {
-        const input = titleInputRef.current;
-        input.focus({ preventScroll: true });
-        const end = input.value.length;
-        input.setSelectionRange(end, end);
-        return;
-      }
-
-      if (viewingIdea && !editingIdea) {
-        section.focus({ preventScroll: true });
+      if ((isNew || isEditMode) && titleInputRef.current) {
+        titleInputRef.current.focus({ preventScroll: true });
+      } else if (isReadMode && panelRef.current) {
+        panelRef.current.focus({ preventScroll: true });
       }
     });
-  }, [viewingIdea, editingIdea, title]);
-
-  useEffect(() => {
-    if (!showSuccessFlash) return;
-
-    const timer = setTimeout(() => setShowSuccessFlash(false), 1200);
-    return () => clearTimeout(timer);
-  }, [showSuccessFlash]);
-
-  useEffect(() => {
-    if (!showEditFlash) return;
-
-    const timer = setTimeout(() => setShowEditFlash(false), 1200);
-    return () => clearTimeout(timer);
-  }, [showEditFlash]);
-
-  useEffect(() => {
-    if (!showViewFlash) return;
-
-    const timer = setTimeout(() => setShowViewFlash(false), 1200);
-    return () => clearTimeout(timer);
-  }, [showViewFlash]);
+  }, [isOpen, isNew, isEditMode, isReadMode, viewingIdea, editingIdea]);
 
   useEffect(() => {
     if (!categories.includes(category) && categories.length > 0) {
@@ -107,8 +58,8 @@ function IdeaForm({
     }
   }, [categories, category]);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
 
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
@@ -122,7 +73,7 @@ function IdeaForm({
       description: description.trim(),
     };
 
-    if (editingIdea) {
+    if (isEditMode) {
       await onUpdate({
         ...ideaData,
         id: editingIdea.id,
@@ -132,69 +83,64 @@ function IdeaForm({
     }
 
     await onAdd(ideaData);
-    setTitle("");
-    setCategory(categories[0] ?? "");
-    setDescription("");
-    setShowSuccessFlash(true);
   }
 
-  if (!isLoggedIn && !isReadMode) {
-    return (
-      <section className="form-section">
-        <div className="idea-form login-prompt">
-          <h2 className="form-heading">아이디어 등록</h2>
-          <p className="login-prompt-text">
-            로그인 후 본인이 작성한 아이디어만 등록·수정·삭제할 수 있습니다.
-          </p>
-          <button
-            type="button"
-            className="auth-btn auth-btn--primary login-prompt-btn"
-            onClick={onLoginRequest}
-          >
-            로그인
-          </button>
-        </div>
-      </section>
-    );
+  function handleCancel() {
+    onCancelEdit();
   }
+
+  if (!isOpen) return null;
 
   if (isReadMode) {
     return (
       <section
-        ref={formSectionRef}
+        ref={panelRef}
         id="idea-form-panel"
-        className="form-section"
+        className="roadmap-form-panel idea-form-panel"
         tabIndex={-1}
         aria-label="아이디어 상세"
       >
-        <div
-          className={`idea-form idea-form--reading ${showViewFlash ? "idea-form--success" : ""}`}
-        >
-          <div className="form-header">
-            <h2 className="form-heading">아이디어 상세</h2>
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={onCancelView}
-              >
-                닫기
-              </button>
+        <div className="roadmap-form-panel-inner">
+          <div className="roadmap-form-panel-header">
+            <div className="roadmap-form-panel-title-wrap">
+              <span
+                className="roadmap-item-icon roadmap-item-icon--lg"
+                aria-hidden="true"
+              />
+              <h3 className="roadmap-form-panel-title">아이디어 상세</h3>
             </div>
           </div>
 
-          <span className="form-label">제목</span>
-          <p className="idea-read-text">{viewingIdea.title}</p>
+          <div className="roadmap-form-panel-body">
+            <div className="roadmap-form-field">
+              <span className="roadmap-form-label">요약</span>
+              <p className="idea-panel-read-text">{viewingIdea.title}</p>
+            </div>
+            <div className="roadmap-form-field">
+              <span className="roadmap-form-label">분야</span>
+              <div className="filter-actions">
+                <span className="filter-btn active filter-btn--readonly">
+                  {viewingIdea.category}
+                </span>
+              </div>
+            </div>
+            <div className="roadmap-form-field">
+              <span className="roadmap-form-label">설명</span>
+              <p className="idea-panel-read-text idea-panel-read-desc">
+                {viewingIdea.description || "설명이 없습니다."}
+              </p>
+            </div>
+          </div>
 
-          <span className="form-label">분야</span>
-          <span className="filter-btn active idea-read-category">
-            {viewingIdea.category}
-          </span>
-
-          <span className="form-label">설명</span>
-          <p className="idea-read-text idea-read-desc">
-            {viewingIdea.description || "설명이 없습니다."}
-          </p>
+          <div className="roadmap-form-panel-footer">
+            <button
+              type="button"
+              className="roadmap-form-btn roadmap-form-btn--primary"
+              onClick={onCancelView}
+            >
+              닫기
+            </button>
+          </div>
         </div>
       </section>
     );
@@ -202,71 +148,87 @@ function IdeaForm({
 
   return (
     <section
-      ref={formSectionRef}
+      ref={panelRef}
       id="idea-form-panel"
-      className="form-section"
+      className="roadmap-form-panel idea-form-panel"
       tabIndex={-1}
-      aria-label={editingIdea ? "아이디어 수정" : "새 아이디어 등록"}
+      aria-label={isNew ? "아이디어 만들기" : "아이디어 수정"}
     >
-      <form
-        className={`idea-form ${editingIdea ? "idea-form--editing" : ""} ${showSuccessFlash || showEditFlash ? "idea-form--success" : ""}`}
-        onSubmit={handleSubmit}
-      >
-        <div className="form-header">
-          <h2 className="form-heading">
-            {editingIdea ? "아이디어 수정" : "새 아이디어 등록"}
-          </h2>
-          <div className="form-actions">
-            <button type="submit">{editingIdea ? "수정" : "등록"}</button>
-            {editingIdea && (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={onCancelEdit}
-              >
-                취소
-              </button>
-            )}
+      <form className="roadmap-form-panel-inner" onSubmit={handleSubmit}>
+        <div className="roadmap-form-panel-header">
+          <div className="roadmap-form-panel-title-wrap">
+            <span
+              className="roadmap-item-icon roadmap-item-icon--lg"
+              aria-hidden="true"
+            />
+            <h3 className="roadmap-form-panel-title">
+              {isNew ? "아이디어 만들기" : "아이디어 수정"}
+            </h3>
           </div>
         </div>
 
-        <label htmlFor="title">제목</label>
-        <input
-          ref={titleInputRef}
-          type="text"
-          id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="아이디어 제목을 입력하세요"
-        />
+        <div className="roadmap-form-panel-body">
+          <div className="roadmap-form-field">
+            <label htmlFor="idea-title" className="roadmap-form-label">
+              요약
+            </label>
+            <input
+              ref={titleInputRef}
+              id="idea-title"
+              className="roadmap-form-input roadmap-form-input--title"
+              type="text"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="아이디어 제목을 입력하세요"
+            />
+          </div>
 
-        <span className="form-label" id="category-label">
-          분야
-        </span>
-        <div
-          className="sort-bar form-category-bar"
-          role="group"
-          aria-labelledby="category-label"
-        >
-          <CategoryFilter
-            categories={categories}
-            selected={category}
-            onSelect={setCategory}
-            // allowAdd // TODO: 새 분야 추가
-            // onAddCategory={onAddCategory}
-            // onAddError={setAlertMessage}
-          />
+          <div className="roadmap-form-field">
+            <span className="roadmap-form-label" id="idea-category-label">
+              분야
+            </span>
+            <div
+              className="idea-form-category-card"
+              role="group"
+              aria-labelledby="idea-category-label"
+            >
+              <CategoryFilter
+                categories={categories}
+                selected={category}
+                onSelect={setCategory}
+              />
+            </div>
+          </div>
+
+          <div className="roadmap-form-field">
+            <label htmlFor="idea-description" className="roadmap-form-label">
+              설명
+            </label>
+            <textarea
+              id="idea-description"
+              className="roadmap-form-textarea"
+              rows="3"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="아이디어를 간단히 설명하세요 (선택)"
+            />
+          </div>
         </div>
 
-        <label htmlFor="description">설명</label>
-        <textarea
-          id="description"
-          rows="3"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="아이디어를 간단히 설명하세요"
-        />
+        <div className="roadmap-form-panel-footer">
+          <button
+            type="button"
+            className="roadmap-form-btn roadmap-form-btn--secondary"
+            onClick={handleCancel}
+          >
+            취소
+          </button>
+          <button type="submit" className="roadmap-form-btn roadmap-form-btn--primary">
+            {isNew ? "만들기" : "저장"}
+          </button>
+        </div>
       </form>
+
       <AlertDialog
         isOpen={Boolean(alertMessage)}
         title="입력 필요"

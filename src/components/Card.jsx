@@ -26,9 +26,9 @@ function Card({
     <article
       className={`card ${isViewing ? "card--viewing" : ""} ${isEditing ? "card--editing" : ""} ${isFlashing ? "card--success" : ""}`}
     >
-      {isEditing && <span className="card-editing-badge">수정 중</span>}
+      {isEditing && <span className="card-state-badge">수정 중</span>}
       {isViewing && !isEditing && (
-        <span className="card-viewing-badge">열람 중</span>
+        <span className="card-state-badge">열람 중</span>
       )}
       <div
         className={`card-body ${isEditing ? "" : "card-body--clickable"}`}

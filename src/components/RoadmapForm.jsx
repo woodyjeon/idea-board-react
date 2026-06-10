@@ -117,7 +117,7 @@ function RoadmapForm({
             <input
               ref={titleInputRef}
               id="roadmap-title"
-              className="roadmap-form-input"
+              className="roadmap-form-input roadmap-form-input--title"
               type="text"
               value={title}
               onChange={(event) => setTitle(event.target.value)}

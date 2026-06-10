@@ -53,7 +53,8 @@
 ### 1. Supabase 설정 (supabase 모드만)
 
 1. [Supabase](https://supabase.com/)에서 프로젝트 생성
-2. **SQL Editor**에서 `supabase/schema.sql` 전체 실행
+2. **SQL Editor**에서 `supabase/schema.sql` 전체 실행  
+   - 이미 `ideas`만 적용한 프로젝트라면 `supabase/roadmaps.sql`만 추가 실행
 3. **Authentication → Providers → Email**에서 **Enable Email provider** 켜기  
    - **Confirm email** 비활성화 (개발·데모용)
 4. **Authentication → Users**에서 데모 계정 생성 (또는 앱에서 회원가입)
@@ -125,7 +126,8 @@ src/
     └── ...
 
 supabase/
-└── schema.sql             # 테이블, RLS, 시드 데이터
+├── schema.sql             # 테이블, RLS, 시드 데이터
+└── roadmaps.sql           # 로드맵 테이블만 추가 (기존 DB 마이그레이션)
 ```
 
 ## 데이터베이스

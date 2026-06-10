@@ -21,16 +21,26 @@ export function getRoadmapYearRange() {
   return years;
 }
 
-export function getRoadmapViewYears(centerYear) {
+export function getRoadmapViewYears(
+  centerYear,
+  radius = ROADMAP_VIEW_YEAR_RADIUS,
+) {
+  if (radius <= 0) return [centerYear];
+
   return [
-    centerYear - ROADMAP_VIEW_YEAR_RADIUS,
+    centerYear - radius,
     centerYear,
-    centerYear + ROADMAP_VIEW_YEAR_RADIUS,
+    centerYear + radius,
   ];
 }
 
-export function formatRoadmapViewRange(centerYear) {
-  const [start, , end] = getRoadmapViewYears(centerYear);
+export function formatRoadmapViewRange(
+  centerYear,
+  radius = ROADMAP_VIEW_YEAR_RADIUS,
+) {
+  if (radius <= 0) return `${centerYear}년`;
+
+  const [start, , end] = getRoadmapViewYears(centerYear, radius);
   return `${start}~${end}년`;
 }
 

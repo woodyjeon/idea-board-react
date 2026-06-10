@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import "./App.css";
 import { useAuth } from "./context/AuthContext";
 import Header from "./components/Header";
@@ -19,15 +20,6 @@ import {
   updateIdea,
 } from "./lib/ideasApi";
 
-/** 스크롤 멈춘 뒤 헤더 숨김 */
-const HEADER_HIDE_DELAY_MS = 2000;
-/** 헤더/상단 영역에서 마우스가 나간 뒤 숨김 */
-const HEADER_MOUSE_LEAVE_DELAY_MS = 500;
-/** 상단 호버로 헤더를 다시 열 때 짧은 유예 (지나가는 커서 무시) */
-const HEADER_HOVER_SHOW_DELAY_MS = 150;
-const HEADER_TOP_THRESHOLD = 64;
-const HEADER_HOVER_ZONE = 28;
-
 function App() {
   const { user, isLoggedIn, isLoading: isAuthLoading, openLogin } = useAuth();
   const [activePage, setActivePage] = useState("board");
@@ -45,180 +37,13 @@ function App() {
   const paginationRef = useRef(null);
   const preservePaginationScrollRef = useRef(false);
   const paginationScrollYRef = useRef(null);
-  const headerHideTimerRef = useRef(null);
-  const headerShowTimerRef = useRef(null);
-  const pointerInHeaderAreaRef = useRef(false);
-  const isHeaderHiddenRef = useRef(false);
-  const formPanelActiveRef = useRef(false);
-  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
-  const [roadmapFormActive, setRoadmapFormActive] = useState(false);
-
-  useEffect(() => {
-    isHeaderHiddenRef.current = isHeaderHidden;
-  }, [isHeaderHidden]);
 
   const deleteTarget = ideas.find((idea) => idea.id === deleteTargetId);
-
-  function setFormPanelActive(active) {
-    formPanelActiveRef.current = active;
-
-    if (active) {
-      clearTimeout(headerHideTimerRef.current);
-      clearTimeout(headerShowTimerRef.current);
-      setIsHeaderHidden(true);
-      return;
-    }
-
-    if (window.scrollY <= HEADER_TOP_THRESHOLD) {
-      setIsHeaderHidden(false);
-    }
-  }
-
-  useEffect(() => {
-    setFormPanelActive(Boolean(viewingIdea || editingIdea || roadmapFormActive));
-  }, [viewingIdea, editingIdea, roadmapFormActive]);
-
-  function showHeader() {
-    if (formPanelActiveRef.current) return;
-
-    clearTimeout(headerShowTimerRef.current);
-    setIsHeaderHidden(false);
-  }
-
-  function revealHeaderOnHover() {
-    clearTimeout(headerHideTimerRef.current);
-    clearTimeout(headerShowTimerRef.current);
-
-    if (!isHeaderHiddenRef.current) {
-      setIsHeaderHidden(false);
-      return;
-    }
-
-    headerShowTimerRef.current = setTimeout(() => {
-      setIsHeaderHidden(false);
-    }, HEADER_HOVER_SHOW_DELAY_MS);
-  }
-
-  function scheduleHeaderHideOnLeave() {
-    clearTimeout(headerHideTimerRef.current);
-
-    if (formPanelActiveRef.current) {
-      setIsHeaderHidden(true);
-      return;
-    }
-
-    if (window.scrollY <= HEADER_TOP_THRESHOLD) {
-      setIsHeaderHidden(false);
-      return;
-    }
-
-    headerHideTimerRef.current = setTimeout(() => {
-      setIsHeaderHidden(true);
-    }, HEADER_MOUSE_LEAVE_DELAY_MS);
-  }
-
-  function scheduleHeaderHide() {
-    clearTimeout(headerHideTimerRef.current);
-
-    if (formPanelActiveRef.current) {
-      setIsHeaderHidden(true);
-      return;
-    }
-
-    if (window.scrollY <= HEADER_TOP_THRESHOLD) {
-      setIsHeaderHidden(false);
-      return;
-    }
-
-    headerHideTimerRef.current = setTimeout(() => {
-      setIsHeaderHidden(true);
-    }, HEADER_HIDE_DELAY_MS);
-  }
-
-  function handleHeaderHoverEnter() {
-    pointerInHeaderAreaRef.current = true;
-    revealHeaderOnHover();
-  }
-
-  function handleHeaderHoverLeave(event) {
-    const nextTarget = event?.relatedTarget;
-    const headerEl = document.getElementById("app-header");
-
-    if (nextTarget instanceof Node) {
-      if (headerEl?.contains(nextTarget)) return;
-      if (nextTarget.closest?.(".header-reveal-zone")) return;
-    }
-
-    clearTimeout(headerShowTimerRef.current);
-    pointerInHeaderAreaRef.current = false;
-    scheduleHeaderHideOnLeave();
-  }
-
-  useEffect(() => {
-    function handleScroll() {
-      if (!formPanelActiveRef.current) {
-        showHeader();
-      }
-      scheduleHeaderHide();
-    }
-
-    function handleMouseMove(event) {
-      if (window.scrollY <= HEADER_TOP_THRESHOLD) {
-        if (
-          formPanelActiveRef.current &&
-          event.clientY > HEADER_HOVER_ZONE
-        ) {
-          return;
-        }
-
-        pointerInHeaderAreaRef.current = true;
-        clearTimeout(headerHideTimerRef.current);
-        setIsHeaderHidden(false);
-        return;
-      }
-
-      const headerEl = document.getElementById("app-header");
-      const inTopHoverZone = event.clientY <= HEADER_HOVER_ZONE;
-      let overHeader = false;
-
-      if (headerEl) {
-        const rect = headerEl.getBoundingClientRect();
-        overHeader =
-          event.clientY >= rect.top &&
-          event.clientY <= rect.bottom &&
-          event.clientX >= rect.left &&
-          event.clientX <= rect.right;
-      }
-
-      const inHeaderArea = inTopHoverZone || overHeader;
-
-      if (inHeaderArea) {
-        pointerInHeaderAreaRef.current = true;
-        revealHeaderOnHover();
-        return;
-      }
-
-      if (pointerInHeaderAreaRef.current) {
-        clearTimeout(headerShowTimerRef.current);
-        pointerInHeaderAreaRef.current = false;
-        scheduleHeaderHideOnLeave();
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("mousemove", handleMouseMove);
-      clearTimeout(headerHideTimerRef.current);
-      clearTimeout(headerShowTimerRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     if (!flashCardId) return;
 
-    const timer = setTimeout(() => setFlashCardId(null), 1200);
+    const timer = setTimeout(() => setFlashCardId(null), 700);
     return () => clearTimeout(timer);
   }, [flashCardId]);
 
@@ -238,7 +63,13 @@ function App() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!editingIdea || isIdeaOwner(editingIdea, user?.id)) return;
+    if (
+      !editingIdea ||
+      editingIdea === "new" ||
+      isIdeaOwner(editingIdea, user?.id)
+    ) {
+      return;
+    }
 
     setEditingIdea(null);
   }, [user?.id, editingIdea]);
@@ -351,6 +182,7 @@ function App() {
       setIdeas((prev) => [created, ...prev]);
       setFlashCardId(created.id);
       setCurrentPage(1);
+      setEditingIdea(null);
     } catch (error) {
       setIdeasError(error.message);
     }
@@ -384,12 +216,17 @@ function App() {
     }
   }
 
-  function scrollToHeader() {
-    showHeader();
-    clearTimeout(headerHideTimerRef.current);
-    document
-      .getElementById("app-header")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleStartCreate() {
+    if (!isLoggedIn) {
+      openLogin();
+      return;
+    }
+    setEditingIdea("new");
+    setViewingIdea(null);
   }
 
   function handleViewIdea(idea) {
@@ -470,7 +307,7 @@ function App() {
     setCategoryFilter("all");
     setSortOrder(null);
     setCurrentPage(1);
-    scrollToHeader();
+    scrollToTop();
   }
 
   const cardEmptyMessage = ideasError
@@ -483,21 +320,10 @@ function App() {
 
   return (
     <div className="app-shell">
-      {isHeaderHidden && (
-        <div
-          className="header-reveal-zone"
-          aria-hidden="true"
-          onMouseEnter={handleHeaderHoverEnter}
-          onMouseLeave={handleHeaderHoverLeave}
-        />
-      )}
       <Header
         activePage={activePage}
-        isHidden={isHeaderHidden}
         onPageChange={handleNavPageChange}
         onHomeClick={handleGoHome}
-        onHoverAreaEnter={handleHeaderHoverEnter}
-        onHoverAreaLeave={handleHeaderHoverLeave}
       />
       <div className="app-main">
         <main
@@ -506,45 +332,89 @@ function App() {
           aria-hidden={activePage !== "board"}
         >
           <div className="board-content">
-            <IdeaForm
-              categories={categories}
-              isLoggedIn={isLoggedIn}
-              onLoginRequest={openLogin}
-              onAdd={handleAddIdea}
-              viewingIdea={viewingIdea}
-              editingIdea={editingIdea}
-              onUpdate={handleUpdateIdea}
-              onCancelView={() => setViewingIdea(null)}
-              onCancelEdit={() => setEditingIdea(null)}
-            />
-            <SortBar
-              categories={categories}
-              sortOrder={sortOrder}
-              onSortChange={setSortOrder}
-              categoryFilter={categoryFilter}
-              onCategoryFilterChange={setCategoryFilter}
-            />
-            <div
-              className={`card-board ${totalPages > 1 ? "card-board--paged" : ""}`}
-            >
-              <CardGrid
-                ideas={paginatedIdeas}
-                currentUserId={user?.id ?? null}
-                emptyMessage={cardEmptyMessage}
-                isLoading={isAuthLoading || ideasLoading}
-                viewingId={viewingIdea?.id ?? null}
-                editingId={editingIdea?.id ?? null}
-                flashCardId={flashCardId}
-                onView={handleViewIdea}
-                onEdit={handleEditIdea}
-                onDelete={handleDeleteRequest}
+            <div className="board-toolbar">
+              <div className="board-toolbar-left">
+                <h2 className="board-toolbar-title">아이디어 보드</h2>
+                {isLoggedIn ? (
+                  <div className="roadmap-toolbar-meta-group">
+                    <span className="roadmap-meta-pill roadmap-meta-pill--count">
+                      <strong>{displayedIdeas.length}</strong>
+                      <span>개 아이디어</span>
+                    </span>
+                  </div>
+                ) : (
+                  <span className="roadmap-toolbar-login-hint">로그인 필요</span>
+                )}
+              </div>
+              {isLoggedIn && !editingIdea && !viewingIdea && (
+                <button
+                  type="button"
+                  className="roadmap-add-btn"
+                  onClick={handleStartCreate}
+                >
+                  <Plus size={16} strokeWidth={2} aria-hidden="true" />
+                  아이디어 추가
+                </button>
+              )}
+            </div>
+
+            {!isLoggedIn && !isAuthLoading && (
+              <div className="roadmap-login-prompt">
+                <p>로그인 후 본인의 아이디어를 등록·수정·삭제할 수 있습니다.</p>
+                <button
+                  type="button"
+                  className="roadmap-add-btn"
+                  onClick={openLogin}
+                >
+                  로그인
+                </button>
+              </div>
+            )}
+
+            {isLoggedIn && (
+              <IdeaForm
+                categories={categories}
+                viewingIdea={viewingIdea}
+                editingIdea={editingIdea}
+                onAdd={handleAddIdea}
+                onUpdate={handleUpdateIdea}
+                onCancelView={() => setViewingIdea(null)}
+                onCancelEdit={() => setEditingIdea(null)}
               />
-              <div ref={paginationRef} className="pagination-anchor">
-                <Pagination
-                  page={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
+            )}
+
+            <div className="board-list-panel">
+              <SortBar
+                categories={categories}
+                sortOrder={sortOrder}
+                onSortChange={setSortOrder}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
+              />
+              <div
+                className={`card-board ${totalPages > 1 ? "card-board--paged" : ""}`}
+              >
+                <CardGrid
+                  ideas={paginatedIdeas}
+                  currentUserId={user?.id ?? null}
+                  emptyMessage={cardEmptyMessage}
+                  isLoading={isAuthLoading || ideasLoading}
+                  viewingId={viewingIdea?.id ?? null}
+                  editingId={
+                    editingIdea && editingIdea !== "new" ? editingIdea.id : null
+                  }
+                  flashCardId={flashCardId}
+                  onView={handleViewIdea}
+                  onEdit={handleEditIdea}
+                  onDelete={handleDeleteRequest}
                 />
+                <div ref={paginationRef} className="pagination-anchor">
+                  <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -553,10 +423,7 @@ function App() {
           hidden={activePage !== "roadmap"}
           aria-hidden={activePage !== "roadmap"}
         >
-          <RoadmapPage
-            isActive={activePage === "roadmap"}
-            onFormActiveChange={setRoadmapFormActive}
-          />
+          <RoadmapPage />
         </div>
         {activePage === "board" && (
           <>

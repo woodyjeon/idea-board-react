@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import {
   formatRoadmapPeriodWithYear,
@@ -11,9 +12,10 @@ import {
   JIRA_MONTH_ABBRS,
   ROADMAP_MONTH_LABELS,
   ROADMAP_MONTHS_PER_YEAR,
-  ROADMAP_MULTI_YEAR_MONTH_WIDTH,
 } from "../constants/roadmapMonths";
 import { useGanttDragNavigation } from "../hooks/useGanttDragNavigation";
+import { useMediaQuery } from "../hooks/useMediaQuery";
+import GanttTaskActionMenu from "./GanttTaskActionMenu";
 
 function GanttChart({
   items,
@@ -24,22 +26,41 @@ function GanttChart({
   onDelete,
   onShiftYear,
 }) {
+  const isCompactGantt = useMediaQuery("(max-width: 959px)");
+  const [actionItem, setActionItem] = useState(null);
   const monthCount = viewYears.length * ROADMAP_MONTHS_PER_YEAR;
   const timelineMonths = getRoadmapTimelineMonthLabels(viewYears);
   const todayPosition = getGanttTodayPosition(viewYears);
   const { scrollRef, dragHandlers } = useGanttDragNavigation({
     centerYear,
+    viewYearCount: viewYears.length,
     onShiftYear,
   });
+
+  function openActionMenu(item) {
+    setActionItem(item);
+  }
+
+  function closeActionMenu() {
+    setActionItem(null);
+  }
+
+  function handleEditFromMenu() {
+    if (!actionItem) return;
+    onEdit(actionItem);
+    closeActionMenu();
+  }
+
+  function handleDeleteFromMenu() {
+    if (!actionItem) return;
+    onDelete(actionItem.id);
+    closeActionMenu();
+  }
 
   return (
     <div
       className="gantt-chart-root gantt-chart-root--jira"
-      style={{
-        "--roadmap-month-count": monthCount,
-        "--roadmap-month-col-width": `${ROADMAP_MULTI_YEAR_MONTH_WIDTH}px`,
-        "--roadmap-timeline-width": `${monthCount * ROADMAP_MULTI_YEAR_MONTH_WIDTH}px`,
-      }}
+      style={{ "--roadmap-month-count": monthCount }}
     >
       <div
         ref={scrollRef}
@@ -106,6 +127,23 @@ function GanttChart({
             const progress = getTaskProgress(item);
             const status = getTaskStatus(item);
             const barTone = getRoadmapBarTone(item.id);
+            const barInteractiveProps = isCompactGantt
+              ? {
+                  role: "button",
+                  tabIndex: 0,
+                  "aria-label": `${item.title}, ${periodLabel}. 탭하여 수정 또는 삭제`,
+                  onClick: (event) => {
+                    event.stopPropagation();
+                    openActionMenu(item);
+                  },
+                  onKeyDown: (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openActionMenu(item);
+                    }
+                  },
+                }
+              : {};
 
             return (
               <div
@@ -165,9 +203,10 @@ function GanttChart({
                   </div>
                   {gridColumn && (
                     <div
-                      className={`gantt-bar ${barTone} ${isMilestone ? "gantt-bar--milestone" : ""}`}
+                      className={`gantt-bar ${barTone} ${isMilestone ? "gantt-bar--milestone" : ""} ${isCompactGantt ? "gantt-bar--interactive" : ""}`}
                       style={{ gridColumn }}
                       title={periodLabel}
+                      {...barInteractiveProps}
                     >
                       {!isMilestone && (
                         <span className="gantt-bar-label">{item.title}</span>
@@ -180,6 +219,15 @@ function GanttChart({
           })}
         </div>
       </div>
+
+      {actionItem && isCompactGantt && (
+        <GanttTaskActionMenu
+          item={actionItem}
+          onEdit={handleEditFromMenu}
+          onDelete={handleDeleteFromMenu}
+          onClose={closeActionMenu}
+        />
+      )}
     </div>
   );
 }

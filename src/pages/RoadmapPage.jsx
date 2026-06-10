@@ -17,7 +17,7 @@ import {
   updateRoadmap,
 } from "../lib/roadmapApi";
 
-function RoadmapPage({ isActive = true, onFormActiveChange }) {
+function RoadmapPage() {
   const { user, isLoggedIn, isLoading: isAuthLoading, openLogin } = useAuth();
   const [items, setItems] = useState([]);
   const [selectedYear, setSelectedYear] = useState(getRoadmapCurrentYear);
@@ -45,10 +45,6 @@ function RoadmapPage({ isActive = true, onFormActiveChange }) {
   const deleteTarget = visibleItems.find((item) => item.id === deleteTargetId);
   const editingId =
     editingItem && editingItem !== "new" ? editingItem.id : null;
-
-  useEffect(() => {
-    onFormActiveChange?.(isActive && Boolean(editingItem));
-  }, [isActive, editingItem, onFormActiveChange]);
 
   useEffect(() => {
     if (!user?.id) {
